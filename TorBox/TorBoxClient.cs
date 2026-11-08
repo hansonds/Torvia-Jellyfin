@@ -268,9 +268,10 @@ public sealed class TorBoxClient
     /// A fresh direct link (TorBox CDN) for one file. Links are kept for 45 minutes, because
     /// clients ask for playback info several times when starting one video.
     /// </summary>
-    public async Task<string> GetStreamLinkAsync(SourceType type, long itemId, long fileId, CancellationToken ct, TimeSpan? maxAge = null)
+    public async Task<string> GetStreamLinkAsync(SourceType type, long itemId, long fileId, CancellationToken ct, TimeSpan? maxAge = null, string? viewerIp = null)
     {
-        var cacheKey = $"{ShortOf(type)}:{itemId}:{fileId}";
+        // A link made for one viewer points at the TorBox server closest to them, so links are kept per viewer.
+        var cacheKey = $"{ShortOf(type)}:{itemId}:{fileId}:{viewerIp}";
         if (_links.TryGetValue(cacheKey, out var hit) && Fresh(hit.Expires, maxAge))
         {
             return hit.Url;
@@ -291,7 +292,7 @@ public sealed class TorBoxClient
                 return hit.Url;
             }
 
-            return await FetchLinkAsync(key, cacheKey, type, itemId, fileId, ct).ConfigureAwait(false);
+            return await FetchLinkAsync(key, cacheKey, type, itemId, fileId, viewerIp, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -299,7 +300,7 @@ public sealed class TorBoxClient
         }
     }
 
-    private async Task<string> FetchLinkAsync(string key, string cacheKey, SourceType type, long itemId, long fileId, CancellationToken ct)
+    private async Task<string> FetchLinkAsync(string key, string cacheKey, SourceType type, long itemId, long fileId, string? viewerIp, CancellationToken ct)
     {
         using var c = NewClient(key);
         Exception? last = null;
@@ -307,7 +308,8 @@ public sealed class TorBoxClient
         {
             try
             {
-                var url = $"{Base}/{PathOf(type)}/requestdl?token={Uri.EscapeDataString(key)}&{IdParamOf(type)}={itemId}&file_id={fileId}&zip_link=false&redirect=false";
+                var url = $"{Base}/{PathOf(type)}/requestdl?token={Uri.EscapeDataString(key)}&{IdParamOf(type)}={itemId}&file_id={fileId}&zip_link=false&redirect=false"
+                    + (viewerIp is null ? string.Empty : "&user_ip=" + Uri.EscapeDataString(viewerIp));
                 using var doc = await GetJsonAsync(c, url, ct).ConfigureAwait(false);
                 if (doc.RootElement.TryGetProperty("data", out var d) && d.ValueKind == JsonValueKind.String
                     && d.GetString() is { } link && link.StartsWith("http", StringComparison.OrdinalIgnoreCase))

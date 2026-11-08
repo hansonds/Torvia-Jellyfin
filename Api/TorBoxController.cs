@@ -52,7 +52,7 @@ public class TorBoxController : ControllerBase
 
         try
         {
-            var link = await _torbox.GetStreamLinkAsync(type, itemId, fileId, ct).ConfigureAwait(false);
+            var link = await _torbox.GetStreamLinkAsync(type, itemId, fileId, ct, null, ViewerIp.Of(HttpContext)).ConfigureAwait(false);
             return Redirect(link);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -75,6 +75,7 @@ public class TorBoxController : ControllerBase
             byTag = p.Configuration.FoldersByTag,
             hasKey = !string.IsNullOrWhiteSpace(p.Configuration.TorBoxApiKey),
             last = _sync.Status,
+            stats = PhoenicxTorBox.Stats.StreamStats.Instance?.Totals,
         };
     }
 

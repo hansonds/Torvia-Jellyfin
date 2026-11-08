@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using PhoenicxTorBox.Filters;
 using PhoenicxTorBox.Library;
+using PhoenicxTorBox.Stats;
 using PhoenicxTorBox.Tasks;
 using PhoenicxTorBox.TorBox;
 
@@ -19,6 +20,8 @@ public class ServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<LibrarySync>();
         serviceCollection.AddSingleton<DirectPlayFilter>();
         serviceCollection.AddHostedService<SyncScheduleUpdater>();
+        serviceCollection.AddSingleton<StreamStats>();
+        serviceCollection.AddHostedService(sp => sp.GetRequiredService<StreamStats>());
         serviceCollection.PostConfigure<MvcOptions>(o => o.Filters.AddService<DirectPlayFilter>());
     }
 }

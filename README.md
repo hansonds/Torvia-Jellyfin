@@ -68,6 +68,10 @@ even on a small server.
   instantly redirected to TorBox.
 - ⬇️ **Downloads for offline viewing** — the *Download* button in apps gives the real video from
   TorBox.
+- 🌍 **Nearest TorBox server for each viewer** — every viewer streams from the TorBox server
+  closest to them, wherever they are (friends abroad included).
+- 📊 **Bandwidth saved counter** — the plugin page shows how many GB were streamed straight from
+  TorBox instead of through your server (all time and this month).
 - 🛟 **Safe fallback** — if TorBox doesn't give a link at that moment, Jellyfin plays it the normal
   way instead of failing.
 
@@ -134,6 +138,7 @@ a restart. To update now: **Catalog → Torvia → pick the newest version → I
 | Library folder | Where the library files go. | Jellyfin's data folder |
 | Sync interval | How often TorBox is checked. | every 3 hours |
 | Play straight from TorBox | Apps stream from TorBox directly. | on |
+| Nearest TorBox server for each viewer | Each viewer gets the TorBox server closest to them. | on |
 | Separate folder for each TorBox tag | One library per tag. | on |
 | Include usenet / web downloads | Also list those downloads. | on |
 | Name fixes | Fix titles that come out wrong, one per line: `Kaithi.2019 = Kaithi (2019)` | empty |

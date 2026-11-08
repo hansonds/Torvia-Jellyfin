@@ -69,7 +69,7 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
                 var text = (await File.ReadAllTextAsync(strmFile).ConfigureAwait(false)).Trim();
                 if (PlayLinks.TryParse(text, out var dt, out var di, out var df))
                 {
-                    var url = await _torbox.GetStreamLinkAsync(dt, di, df, context.HttpContext.RequestAborted, TimeSpan.FromMinutes(5)).ConfigureAwait(false);
+                    var url = await _torbox.GetStreamLinkAsync(dt, di, df, context.HttpContext.RequestAborted, TimeSpan.FromMinutes(5), ViewerIp.Of(context.HttpContext)).ConfigureAwait(false);
                     executed.Result = new RedirectResult(url, permanent: false);
                 }
             }
@@ -95,7 +95,7 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
                     {
                         if (web)
                         {
-                            await PrepareAsync(ms, true, PublicBase(context.HttpContext), context.HttpContext.RequestAborted).ConfigureAwait(false);
+                            await PrepareAsync(ms, true, PublicBase(context.HttpContext), ViewerIp.Of(context.HttpContext), context.HttpContext.RequestAborted).ConfigureAwait(false);
                         }
                         else
                         {
@@ -133,7 +133,7 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
         {
             if (web)
             {
-                await PrepareAsync(ms, false, publicBase, CancellationToken.None).ConfigureAwait(false);
+                await PrepareAsync(ms, false, publicBase, null, CancellationToken.None).ConfigureAwait(false);
             }
             else
             {
@@ -237,7 +237,7 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
 
         try
         {
-            var url = await _torbox.GetStreamLinkAsync(type, itemId, fileId, context.HttpContext.RequestAborted).ConfigureAwait(false);
+            var url = await _torbox.GetStreamLinkAsync(type, itemId, fileId, context.HttpContext.RequestAborted, null, ViewerIp.Of(context.HttpContext)).ConfigureAwait(false);
             context.Result = new RedirectResult(url, permanent: false);
             return true;
         }
@@ -250,7 +250,7 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
     }
 
 
-    private async Task PrepareAsync(MediaSourceInfo ms, bool freshLink, string publicBase, CancellationToken ct)
+    private async Task PrepareAsync(MediaSourceInfo ms, bool freshLink, string publicBase, string? viewerIp, CancellationToken ct)
     {
         if (!PlayLinks.TryParse(ms.Path, out var type, out var itemId, out var fileId))
         {
@@ -273,7 +273,7 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
         {
             // The app keeps this link for the whole movie (pauses included), so it gets a new one,
             // not one that has already been sitting in the cache for a while.
-            ms.Path = await _torbox.GetStreamLinkAsync(type, itemId, fileId, ct, TimeSpan.FromMinutes(5)).ConfigureAwait(false);
+            ms.Path = await _torbox.GetStreamLinkAsync(type, itemId, fileId, ct, TimeSpan.FromMinutes(5), viewerIp).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

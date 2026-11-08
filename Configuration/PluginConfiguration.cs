@@ -27,6 +27,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public int SyncIntervalMinutes { get; set; } = 180;
 
+    /// <summary>
+    /// Gets or sets a value indicating whether each viewer is sent to the TorBox server closest to
+    /// them (their address is passed to TorBox when the link is made).
+    /// </summary>
+    public bool NearestServerPerViewer { get; set; } = true;
+
     /// <summary>Gets or sets a value indicating whether usenet downloads are included.</summary>
     public bool IncludeUsenet { get; set; } = true;
 
