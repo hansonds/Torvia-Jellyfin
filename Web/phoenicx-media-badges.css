@@ -43,7 +43,3 @@
 :where(.pxBadge--dolby) { background: linear-gradient(135deg, #1b1b1b, #2f2f2f); border-color: rgba(255, 255, 255, .35); }
 :where(.pxBadge--lossless) { background: rgba(46, 204, 113, .2); border-color: rgba(46, 204, 113, .55); }
 :where(.pxBadge--ch) { background: rgba(255, 255, 255, .12); }
-/* Light themes */
-@media (prefers-color-scheme: light) {
-  :where(.pxBadge) { color: #fff; }
-}
