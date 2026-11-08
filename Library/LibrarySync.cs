@@ -53,6 +53,9 @@ public sealed class SyncStatus
     /// <summary>Gets or sets how many Jellyfin libraries use the TorBox folders.</summary>
     public int LibrariesScanned { get; set; }
 
+    /// <summary>Gets or sets how many movie titles were cleaned up this run.</summary>
+    public int TitlesFixed { get; set; }
+
     /// <summary>Gets or sets the tag folders made in this run.</summary>
     public List<TagFolder> Tags { get; set; } = new();
 
@@ -457,10 +460,13 @@ public sealed class LibrarySync
         // Also on a run without changes, so a library added after the first sync gets filled.
         await ScanOurLibrariesAsync(plugin, status, ct).ConfigureAwait(false);
 
+        // Put clean titles back on TorBox movies whose name became a site name from the file.
+        status.TitlesFixed = TitleGuard.Instance?.Sweep(desired.Keys) ?? 0;
+
 
         status.Ok = true;
         status.FinishedUtc = DateTime.UtcNow;
-        status.Message = $"{status.Movies} movies, {status.Shows} series ({status.Episodes} episodes), {status.Tags.Count} tag folder(s). Added {status.Added}, removed {status.Removed}. Subtitles: {status.Subtitles} ({status.SubtitlesAdded} new). Libraries scanned: {status.LibrariesScanned}." + (status.Note is null ? string.Empty : " " + status.Note);
+        status.Message = $"{status.Movies} movies, {status.Shows} series ({status.Episodes} episodes), {status.Tags.Count} tag folder(s). Added {status.Added}, removed {status.Removed}. Subtitles: {status.Subtitles} ({status.SubtitlesAdded} new). Libraries scanned: {status.LibrariesScanned}." + (status.TitlesFixed > 0 ? $" Titles fixed: {status.TitlesFixed}." : string.Empty) + (status.Note is null ? string.Empty : " " + status.Note);
         _log.LogInformation("Torvia: sync done. {Message}", status.Message);
         progress?.Report(100);
         return status;

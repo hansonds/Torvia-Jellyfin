@@ -20,6 +20,8 @@ public class ServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<LibrarySync>();
         serviceCollection.AddSingleton<DirectPlayFilter>();
         serviceCollection.AddHostedService<SyncScheduleUpdater>();
+        serviceCollection.AddSingleton<TitleGuard>();
+        serviceCollection.AddHostedService(sp => sp.GetRequiredService<TitleGuard>());
         serviceCollection.AddSingleton<StreamStats>();
         serviceCollection.AddHostedService(sp => sp.GetRequiredService<StreamStats>());
         serviceCollection.PostConfigure<MvcOptions>(o => o.Filters.AddService<DirectPlayFilter>());
