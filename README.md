@@ -70,8 +70,8 @@ even on a small server.
   TorBox.
 - 🌍 **Nearest TorBox server for each viewer** — every viewer streams from the TorBox server
   closest to them, wherever they are (friends abroad included).
-- 📊 **Bandwidth saved counter** — the plugin page shows how many GB were streamed straight from
-  TorBox instead of through your server (all time and this month).
+- 📊 **Bandwidth saved counter** — the plugin page shows the server traffic avoided: what would
+  have come in from TorBox **plus** what would have gone out to the apps (all time and this month).
 - 🛟 **Safe fallback** — if TorBox doesn't give a link at that moment, Jellyfin plays it the normal
   way instead of failing.
 
