@@ -71,6 +71,14 @@ even on a small server.
 - 🛟 **Safe fallback** — if TorBox doesn't give a link at that moment, Jellyfin plays it the normal
   way instead of failing.
 
+### Media badges
+- 🏷️ **Quality badges on movie and episode pages** — 4K, Dolby Vision, HDR10+, HDR10, HLG, SDR,
+  10-bit, HEVC, Dolby Atmos, DTS:X, DTS-HD MA, TrueHD, DD+, 7.1 … under the year / rating row.
+- Works for **all libraries** (not only TorBox), in Jellyfin web, Jellyfin Media Player and the
+  Android app. Follows the version / audio track you pick.
+- Added to Jellyfin's web page in memory — no files edited, no extra plugins, no custom CSS needed
+  (a theme's CSS can restyle them). Turn off with **Show media badges**.
+
 ### Safe and private
 - 🔒 **Your TorBox API key never leaves the server.** Apps only get short-lived TorBox links.
 - ✍️ **Signed play links** — nobody can guess a link to your files.
@@ -135,6 +143,7 @@ a restart. To update now: **Catalog → Torvia → pick the newest version → I
 | Sync interval | How often TorBox is checked. | every 3 hours |
 | Play straight from TorBox | Apps stream from TorBox directly. | on |
 | Separate folder for each TorBox tag | One library per tag. | on |
+| Show media badges | Quality badges on movie and episode pages (all libraries). | on |
 | Include usenet / web downloads | Also list those downloads. | on |
 | Name fixes | Fix titles that come out wrong, one per line: `Kaithi.2019 = Kaithi (2019)` | empty |
 

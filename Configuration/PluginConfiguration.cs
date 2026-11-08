@@ -27,6 +27,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public int SyncIntervalMinutes { get; set; } = 180;
 
+    /// <summary>
+    /// Gets or sets a value indicating whether quality badges (4K, Dolby Vision, HDR10, Atmos, ...)
+    /// are shown on movie and episode pages in the web client, for all libraries.
+    /// </summary>
+    public bool ShowMediaBadges { get; set; } = true;
+
     /// <summary>Gets or sets a value indicating whether usenet downloads are included.</summary>
     public bool IncludeUsenet { get; set; } = true;
 

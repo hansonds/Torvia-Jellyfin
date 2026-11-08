@@ -1,10 +1,12 @@
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using PhoenicxTorBox.Filters;
 using PhoenicxTorBox.Library;
 using PhoenicxTorBox.Tasks;
+using PhoenicxTorBox.Web;
 using PhoenicxTorBox.TorBox;
 
 namespace PhoenicxTorBox;
@@ -19,6 +21,7 @@ public class ServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<LibrarySync>();
         serviceCollection.AddSingleton<DirectPlayFilter>();
         serviceCollection.AddHostedService<SyncScheduleUpdater>();
+        serviceCollection.AddTransient<IStartupFilter, BadgesStartupFilter>();
         serviceCollection.PostConfigure<MvcOptions>(o => o.Filters.AddService<DirectPlayFilter>());
     }
 }
