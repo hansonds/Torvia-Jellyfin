@@ -3,6 +3,9 @@ using System.Text.Json;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Providers;
+using MediaBrowser.Model.Entities;
+using MediaBrowser.Model.IO;
 using Microsoft.Extensions.Logging;
 using PhoenicxTorBox.TorBox;
 
@@ -53,6 +56,12 @@ public sealed class SyncStatus
     /// <summary>Gets or sets how many Jellyfin libraries use the TorBox folders.</summary>
     public int LibrariesScanned { get; set; }
 
+    /// <summary>Gets or sets how many items have no media info (resolution, audio) yet.</summary>
+    public int MissingMediaInfo { get; set; }
+
+    /// <summary>Gets or sets how many of those were sent to be read again this run.</summary>
+    public int MediaInfoRechecked { get; set; }
+
     /// <summary>Gets or sets the tag folders made in this run.</summary>
     public List<TagFolder> Tags { get; set; } = new();
 
@@ -82,6 +91,10 @@ public sealed class LibrarySync
     private readonly ILibraryMonitor _monitor;
     private readonly IServerApplicationHost _host;
     private readonly ILibraryManager _libraryManager;
+    private readonly IMediaSourceManager _mediaSources;
+    private readonly IProviderManager _providers;
+    private readonly IFileSystem _fileSystem;
+    private readonly Dictionary<Guid, DateTime> _reprobed = new();
     private readonly ILogger<LibrarySync> _log;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private SyncStatus? _status;
@@ -89,8 +102,19 @@ public sealed class LibrarySync
     /// <summary>
     /// Initializes a new instance of the <see cref="LibrarySync"/> class.
     /// </summary>
-    public LibrarySync(TorBoxClient torbox, ILibraryMonitor monitor, IServerApplicationHost host, ILibraryManager libraryManager, ILogger<LibrarySync> log)
+    public LibrarySync(
+        TorBoxClient torbox,
+        ILibraryMonitor monitor,
+        IServerApplicationHost host,
+        ILibraryManager libraryManager,
+        IMediaSourceManager mediaSources,
+        IProviderManager providers,
+        IFileSystem fileSystem,
+        ILogger<LibrarySync> log)
     {
+        _mediaSources = mediaSources;
+        _providers = providers;
+        _fileSystem = fileSystem;
         _libraryManager = libraryManager;
         _host = host;
         _torbox = torbox;
@@ -452,9 +476,13 @@ public sealed class LibrarySync
         // Also on a run without changes, so a library added after the first sync gets filled.
         await ScanOurLibrariesAsync(plugin, status, ct).ConfigureAwait(false);
 
+        // Items whose media info (resolution, HDR, audio) Jellyfin couldn't read from TorBox
+        // during the scan — e.g. TorBox was slow — are read again, a few per sync.
+        RecheckMediaInfo(desired.Keys, status);
+
         status.Ok = true;
         status.FinishedUtc = DateTime.UtcNow;
-        status.Message = $"{status.Movies} movies, {status.Shows} series ({status.Episodes} episodes), {status.Tags.Count} tag folder(s). Added {status.Added}, removed {status.Removed}. Subtitles: {status.Subtitles} ({status.SubtitlesAdded} new). Libraries scanned: {status.LibrariesScanned}." + (status.Note is null ? string.Empty : " " + status.Note);
+        status.Message = $"{status.Movies} movies, {status.Shows} series ({status.Episodes} episodes), {status.Tags.Count} tag folder(s). Added {status.Added}, removed {status.Removed}. Subtitles: {status.Subtitles} ({status.SubtitlesAdded} new). Libraries scanned: {status.LibrariesScanned}." + (status.MissingMediaInfo > 0 ? $" Media info missing: {status.MissingMediaInfo} (re-reading {status.MediaInfoRechecked})." : string.Empty) + (status.Note is null ? string.Empty : " " + status.Note);
         _log.LogInformation("Torvia: sync done. {Message}", status.Message);
         progress?.Report(100);
         return status;
@@ -554,6 +582,60 @@ public sealed class LibrarySync
         if (found == 0)
         {
             _log.LogInformation("Torvia: no Jellyfin library uses {Root} yet - add the folders as libraries", root);
+        }
+    }
+
+    private void RecheckMediaInfo(IEnumerable<string> strmPaths, SyncStatus status)
+    {
+        const int perSync = 40;
+        foreach (var path in strmPaths)
+        {
+            try
+            {
+                var item = _libraryManager.FindByPath(path, false);
+                if (item is null)
+                {
+                    continue; // not in a Jellyfin library (yet)
+                }
+
+                var hasVideo = _mediaSources.GetMediaStreams(item.Id).Any(m => m.Type == MediaStreamType.Video);
+                if (hasVideo)
+                {
+                    _reprobed.Remove(item.Id);
+                    continue;
+                }
+
+                status.MissingMediaInfo++;
+                if (status.MediaInfoRechecked >= perSync
+                    || (_reprobed.TryGetValue(item.Id, out var last) && DateTime.UtcNow - last < TimeSpan.FromHours(6)))
+                {
+                    continue;
+                }
+
+                _reprobed[item.Id] = DateTime.UtcNow;
+                _providers.QueueRefresh(
+                    item.Id,
+                    new MetadataRefreshOptions(new DirectoryService(_fileSystem))
+                    {
+                        MetadataRefreshMode = MetadataRefreshMode.FullRefresh,
+                        ReplaceAllMetadata = false,
+                        ReplaceAllImages = false,
+                    },
+                    RefreshPriority.Low);
+                status.MediaInfoRechecked++;
+            }
+            catch (Exception ex)
+            {
+                _log.LogDebug(ex, "Torvia: media info check failed for {Path}", path);
+            }
+        }
+
+        if (status.MissingMediaInfo > 0)
+        {
+            _log.LogInformation(
+                "Torvia: {Missing} item(s) without media info, {Queued} queued to be read again",
+                status.MissingMediaInfo,
+                status.MediaInfoRechecked);
         }
     }
 
