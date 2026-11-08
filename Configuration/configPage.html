@@ -48,10 +48,6 @@
                     <label><input is="emby-checkbox" type="checkbox" id="FoldersByTag" /><span>Separate folder for each TorBox tag</span></label>
                     <div class="fieldDescription checkboxFieldDescription">Downloads you tag on TorBox (e.g. movies, cinema, tv-shows) go into their own folder, so each tag can be its own library. Untagged ones stay in Movies / Shows. Keep movies and series in different tags.</div>
                 </div>
-                <div class="checkboxContainer checkboxContainer-withDescription">
-                    <label><input is="emby-checkbox" type="checkbox" id="ShowMediaBadges" /><span>Show media badges</span></label>
-                    <div class="fieldDescription checkboxFieldDescription">Quality badges (4K, Dolby Vision, HDR10, 10-bit, Atmos, DTS:X, 7.1 …) on movie and episode pages, for all libraries. After changing, reload the Jellyfin page or app.</div>
-                </div>
                 <div class="checkboxContainer">
                     <label><input is="emby-checkbox" type="checkbox" id="IncludeUsenet" /><span>Include usenet downloads</span></label>
                 </div>
@@ -81,7 +77,7 @@
             var pluginId = 'd793e3f9-364f-4640-9ebb-7c807bfcb90e';
             var page = document.querySelector('#PhoenicxTorBoxPage');
             var fields = ['TorBoxApiKey', 'PublicServerUrl', 'LibraryPath', 'NameFixes'];
-            var checks = ['DirectToClients', 'FoldersByTag', 'ShowMediaBadges', 'IncludeUsenet', 'IncludeWebDownloads'];
+            var checks = ['DirectToClients', 'FoldersByTag', 'IncludeUsenet', 'IncludeWebDownloads'];
 
             function esc(s) {
                 return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
