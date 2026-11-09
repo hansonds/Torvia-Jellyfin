@@ -461,7 +461,7 @@ public sealed class LibrarySync
         await ScanOurLibrariesAsync(plugin, status, ct).ConfigureAwait(false);
 
         // Put clean titles back on TorBox movies whose name became a site name from the file.
-        status.TitlesFixed = TitleGuard.Instance?.Sweep(desired.Keys) ?? 0;
+        status.TitlesFixed = TitleGuard.Instance is { } guard ? await guard.SweepAsync(desired.Keys).ConfigureAwait(false) : 0;
 
 
         status.Ok = true;

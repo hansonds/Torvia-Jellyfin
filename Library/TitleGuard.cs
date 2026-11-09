@@ -59,14 +59,14 @@ public sealed class TitleGuard : IHostedService
     }
 
     /// <summary>Checks the TorBox movies behind these .strm files (after a sync). Returns how many were fixed.</summary>
-    public int Sweep(IEnumerable<string> strmPaths)
+    public async Task<int> SweepAsync(IEnumerable<string> strmPaths)
     {
         var fixedCount = 0;
         foreach (var path in strmPaths)
         {
             try
             {
-                if (_library.FindByPath(path, false) is { } item && Fix(item))
+                if (_library.FindByPath(path, false) is { } item && await FixAsync(item).ConfigureAwait(false))
                 {
                     fixedCount++;
                 }
@@ -84,9 +84,22 @@ public sealed class TitleGuard : IHostedService
     {
         try
         {
-            if (e.Item is { } item)
+            // Never inside Jellyfin's own scan / save: the fix runs a moment later in the background,
+            // so a library scan (and Torvia's sync) can't get stuck waiting on it.
+            if (e.Item is Movie item && IsTorBox(item))
             {
-                Fix(item);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                        await FixAsync(item).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.LogDebug(ex, "Torvia: title check failed");
+                    }
+                });
             }
         }
         catch (Exception ex)
@@ -96,20 +109,20 @@ public sealed class TitleGuard : IHostedService
     }
 
     /// <summary>Puts the clean title back on a TorBox movie whose name was replaced by release junk.</summary>
-    private bool Fix(BaseItem item)
+    private static bool IsTorBox(BaseItem item) =>
+        Plugin.Instance is { } plugin
+        && item.Path is { } p
+        && p.EndsWith(".strm", StringComparison.OrdinalIgnoreCase)
+        && p.StartsWith(plugin.LibraryRoot, StringComparison.Ordinal);
+
+    private async Task<bool> FixAsync(BaseItem item)
     {
-        if (item is not Movie movie || Plugin.Instance is not { } plugin)
+        if (item is not Movie movie || !IsTorBox(movie))
         {
             return false;
         }
 
         var path = movie.Path;
-        if (string.IsNullOrEmpty(path)
-            || !path.EndsWith(".strm", StringComparison.OrdinalIgnoreCase)
-            || !path.StartsWith(plugin.LibraryRoot, StringComparison.Ordinal))
-        {
-            return false;
-        }
 
         var name = movie.Name ?? string.Empty;
         if (name.Length > 0 && !Junk.IsMatch(name))
@@ -133,7 +146,7 @@ public sealed class TitleGuard : IHostedService
                 movie.LockedFields = movie.LockedFields.Append(MetadataField.Name).ToArray();
             }
 
-            movie.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).GetAwaiter().GetResult();
+            await movie.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, CancellationToken.None).ConfigureAwait(false);
             _log.LogInformation("Torvia: title \"{Old}\" replaced with \"{New}\"", name, title);
             return true;
         }

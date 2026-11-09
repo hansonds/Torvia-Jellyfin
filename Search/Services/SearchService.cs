@@ -49,6 +49,7 @@ public class SearchService
         var d = await _tmdb.GetDetailsAsync(type, tmdbId, ct).ConfigureAwait(false);
         if (d != null)
         {
+            Remember(type, tmdbId, d);
             d.JellyfinItemId = FindInLibrary(type, tmdbId)?.ToString("N");
         }
 
@@ -65,7 +66,52 @@ public class SearchService
             Recursive = true,
             Limit = 1,
         });
-        return items.Count > 0 ? items[0].Id : null;
+        if (items.Count > 0)
+        {
+            return items[0].Id;
+        }
+
+        // Not matched by TMDB number (Jellyfin may have matched it another way, or is still
+        // fetching details): look for the same name and year among Torvia's TorBox items.
+        if (!_titles.TryGetValue(type + ":" + tmdbId, out var t) || Plugin.Instance is not { } plugin)
+        {
+            return null;
+        }
+
+        var want = PhoenicxTorBox.Library.NameParser.Normalize(t.Title);
+        var root = plugin.LibraryRoot;
+        foreach (var it in _library.GetItemList(new InternalItemsQuery
+                 {
+                     IncludeItemTypes = new[] { type == "tv" ? BaseItemKind.Series : BaseItemKind.Movie },
+                     Recursive = true,
+                 }))
+        {
+            if (it.Path is null || !it.Path.StartsWith(root, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var sameName = PhoenicxTorBox.Library.NameParser.Normalize(it.Name ?? string.Empty) == want
+                || PhoenicxTorBox.Library.NameParser.Normalize(it.OriginalTitle ?? string.Empty) == want
+                || PhoenicxTorBox.Library.NameParser.Normalize(System.IO.Path.GetFileName(it.Path.TrimEnd('/')).Split('(')[0]) == want;
+            var sameYear = t.Year is null || it.ProductionYear is null || Math.Abs(it.ProductionYear.Value - t.Year.Value) <= 1;
+            if (sameName && sameYear)
+            {
+                return it.Id;
+            }
+        }
+
+        return null;
+    }
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Title, int? Year)> _titles = new();
+
+    private void Remember(string type, int tmdbId, TitleDetails d)
+    {
+        if (!string.IsNullOrWhiteSpace(d.Title.Title))
+        {
+            _titles[type + ":" + tmdbId] = (d.Title.Title, d.Title.Year);
+        }
     }
 
     /// <summary>Gets the cached releases, sorted "Best" first.</summary>
@@ -74,6 +120,7 @@ public class SearchService
     {
         var d = await _tmdb.GetDetailsAsync(type, tmdbId, ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException("TMDB doesn't know this title.");
+        Remember(type, tmdbId, d);
         if (string.IsNullOrEmpty(d.ImdbId))
         {
             throw new InvalidOperationException("This title has no IMDb id on TMDB, so no releases can be found.");
