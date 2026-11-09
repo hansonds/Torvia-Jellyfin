@@ -7,7 +7,7 @@ using Plugin = PhoenicxTorBox.Plugin;
 
 namespace TorviaSearch.Services;
 
-/// <summary>Talks to TMDB. Uses Jellyfin's HTTP(S)_PROXY (your WARP proxy) like the rest of the server.</summary>
+/// <summary>Talks to TMDB. Uses the server's HTTP(S)_PROXY settings, if any, like the rest of Jellyfin.</summary>
 public class TmdbClient
 {
     private const string Base = "https://api.themoviedb.org/3";

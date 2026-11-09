@@ -79,7 +79,7 @@
             </div>
 
             <div class="tvPane" data-pane="search" style="display:none">
-            <p>Users you allow below get a <b>Search &amp; Add</b> button in PHOENIXA. They search a title, pick a release that TorBox already has cached, and it is added to your TorBox with a tag. Torvia then brings it into Jellyfin. Your API keys stay on this server; apps never see them.</p>
+            <p>Users you allow below can use <b>Search &amp; Add</b> on the web page shown below (and in apps that support it, like PHOENIXA). They search a title, pick a release that TorBox already has cached, and it is added to your TorBox with a tag. Torvia then brings it into Jellyfin. Your API keys stay on this server; apps never see them.</p>
 
             <div id="tsStatus" style="padding:1em;border-radius:8px;background:rgba(255,255,255,0.06);margin:1em 0;line-height:1.6">Loading…</div>
 
@@ -88,7 +88,7 @@
                 <div class="fieldDescription" style="margin-bottom:1em">The TorBox API key is the one on the Torvia tab.</div>
                 <div class="inputContainer">
                     <input is="emby-input" type="password" id="TmdbApiKey" label="TMDB API key" autocomplete="off" />
-                    <div class="fieldDescription">themoviedb.org → Settings → API. The v3 key or the v4 read access token both work. TMDB goes through this server's proxy (your WARP proxy).</div>
+                    <div class="fieldDescription">themoviedb.org → Settings → API. The v3 key or the v4 read access token both work. TMDB is reached from this server (it uses the server's proxy settings, if any).</div>
                 </div>
                 <div class="inputContainer">
                     <input is="emby-input" type="text" id="TorrentioUrl" label="Torrentio address" />
@@ -273,6 +273,7 @@
             var page = document.querySelector('#PhoenicxTorBoxPage');
             var fields = ['TmdbApiKey', 'TorrentioUrl', 'Tags', 'MovieTag', 'TvTag', 'DailyLimitPerUser'];
             var checks = ['AllowAllUsers', 'SyncTorvia', 'ReturnStreamLink', 'ShowCam'];
+            var publicUrl = ''; // "Public server address" from the Torvia tab
 
             function esc(s) {
                 return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -286,7 +287,8 @@
 
             function loadStatus() {
                 api('TorviaSearch/Status').then(function (s) {
-                    var web = ApiClient.getUrl('TorviaSearch/Web');
+                    var pub = (publicUrl || '').trim().replace(/\/+$/, '');
+                    var web = pub ? pub + '/TorviaSearch/Web' : ApiClient.getUrl('TorviaSearch/Web');
                     page.querySelector('#tsStatus').innerHTML =
                         (s.ready ? '✅ Ready.' : '⚠️ Add the TMDB key here (and the TorBox key on the Torvia tab).') + '<br>' +
                                                 'Web page for allowed users: <a href="' + esc(web) + '" target="_blank" style="color:inherit">' + esc(web) + '</a><br>' +
@@ -320,6 +322,7 @@
             page.addEventListener('pageshow', function () {
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+                    publicUrl = c.PublicServerUrl || '';
                     fields.forEach(function (f) { page.querySelector('#' + f).value = c[f] == null ? '' : c[f]; });
                     checks.forEach(function (f) { page.querySelector('#' + f).checked = !!c[f]; });
                     loadUsers(c.AllowedUserIds || []);
@@ -339,6 +342,7 @@
                         .filter(function (x) { return x.checked && !x.disabled; })
                         .map(function (x) { return x.getAttribute('data-id'); });
                     ApiClient.updatePluginConfiguration(pluginId, c).then(function (r) {
+                        publicUrl = c.PublicServerUrl || '';
                         Dashboard.processPluginConfigurationUpdateResult(r);
                         loadStatus();
                     });

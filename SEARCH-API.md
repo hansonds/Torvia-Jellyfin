@@ -1,6 +1,6 @@
 # Torvia Search API (for PHOENIXA and other apps)
 
-All calls go to the Jellyfin server (e.g. `https://media.phoenicx.org`) with the signed-in user's
+All calls go to the Jellyfin server (e.g. `https://jellyfin.example.com`) with the signed-in user's
 normal Jellyfin token, the same way the app already calls Jellyfin:
 
 ```
@@ -142,9 +142,9 @@ optionally `&user=<userId>` for one user.
 ```json
 {
   "isAdmin": false, "all": false,
-  "users": null,      // admins with all=true: [ { "id": "…", "name": "divya", "count": 4 } ]
+  "users": null,      // admins with all=true: [ { "id": "…", "name": "alex", "count": 4 } ]
   "items": [ {
-    "id": "record id", "userId": "…", "userName": "divya", "when": "2026-11-09T08:30:00Z",
+    "id": "record id", "userId": "…", "userName": "alex", "when": "2026-11-09T08:30:00Z",
     "type": "tv", "tmdbId": 1234, "title": "Paatal Lok", "year": 2025, "poster": "https://…",
     "season": 2, "episode": 5, "label": "S02E05", "quality": "WEB-DL · 1080p", "size": "2.3 GB",
     "tag": "tv-shows", "name": "name in TorBox", "release": "release name",
@@ -173,7 +173,7 @@ To open it inside an app's WebView without a second sign-in, pass the app's toke
 address **after #** (it is never sent to the server's logs and is removed from the address bar):
 
 ```
-https://media.phoenicx.org/TorviaSearch/Web#token=<AccessToken>&name=<UserName>
+https://jellyfin.example.com/TorviaSearch/Web#token=<AccessToken>&name=<UserName>
 ```
 
 In an Android WebView turn on `settings.domStorageEnabled = true` and `javaScriptEnabled = true`.
