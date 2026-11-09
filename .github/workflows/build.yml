@@ -3,6 +3,10 @@ name: Build and publish plugin
 on:
   push:
     branches: [main]
+    # Text-only changes don't make a new plugin build.
+    paths-ignore:
+      - "**.md"
+      - "logo.png"
   workflow_dispatch:
 
 permissions:
@@ -25,10 +29,26 @@ jobs:
           echo "abi=$(grep '^targetAbi:' build.yaml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
           echo "guid=$(grep '^guid:' build.yaml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
 
+      # A published version is never rebuilt: Jellyfin keeps its checksum, and a new file with the
+      # same version number would fail to install. Code changes need a new version in build.yaml.
+      - name: Skip if this version is already published
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.v.outputs.version }}" >/dev/null 2>&1; then
+            echo "Version ${{ steps.v.outputs.version }} is already published - bump the version in build.yaml to release changes."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build
+        if: steps.exists.outputs.skip != 'true'
         run: dotnet build PhoenicxTorBox.csproj -c Release -o out
 
       - name: Package
+        if: steps.exists.outputs.skip != 'true'
         id: pkg
         run: |
           VER=${{ steps.v.outputs.version }}
@@ -39,16 +59,17 @@ jobs:
           echo "md5=$(md5sum "$ZIP" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Create release
+        if: steps.exists.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VER=${{ steps.v.outputs.version }}
-          gh release delete "v$VER" --yes --cleanup-tag 2>/dev/null || true
           gh release create "v$VER" "${{ steps.pkg.outputs.zip }}" \
             --title "Torvia v$VER" \
             --notes "Install from the plugin repository: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/manifest.json (or raw gh-pages manifest.json)."
 
       - name: Publish manifest.json to gh-pages
+        if: steps.exists.outputs.skip != 'true'
         run: |
           VER=${{ steps.v.outputs.version }}
           REPO=${{ github.repository }}
