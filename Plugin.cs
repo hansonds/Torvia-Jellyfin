@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Xml.Linq;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
@@ -30,6 +31,8 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             Configuration.SigningSecret = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             SaveConfiguration();
         }
+
+        ImportOldSearchSettings(applicationPaths.PluginConfigurationsPath);
     }
 
     /// <summary>Gets the running plugin.</summary>
@@ -73,5 +76,59 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             MenuIcon = "cloud",
             EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html",
         };
+    }
+
+    /// <summary>
+    /// Torvia Search used to be its own plugin. Its settings (TMDB key, allowed users, tags, …) are
+    /// brought over once, so nothing has to be typed again.
+    /// </summary>
+    private void ImportOldSearchSettings(string configFolder)
+    {
+        if (Configuration.SearchSettingsImported)
+        {
+            return;
+        }
+
+        try
+        {
+            var file = Path.Combine(configFolder, "TorviaSearch.xml");
+            if (File.Exists(file) && XDocument.Load(file).Root is { } r)
+            {
+                string? S(string n) => r.Element(n)?.Value;
+                bool? B(string n) => bool.TryParse(S(n), out var b) ? b : null;
+                var c = Configuration;
+                if (string.IsNullOrWhiteSpace(c.TmdbApiKey) && !string.IsNullOrWhiteSpace(S("TmdbApiKey")))
+                {
+                    c.TmdbApiKey = S("TmdbApiKey")!.Trim();
+                }
+
+                if (string.IsNullOrWhiteSpace(c.TorBoxApiKey) && !string.IsNullOrWhiteSpace(S("TorBoxApiKey")))
+                {
+                    c.TorBoxApiKey = S("TorBoxApiKey")!.Trim();
+                }
+
+                c.TorrentioUrl = S("TorrentioUrl") is { Length: > 0 } t ? t : c.TorrentioUrl;
+                c.Tags = S("Tags") is { Length: > 0 } tags ? tags : c.Tags;
+                c.MovieTag = S("MovieTag") is { Length: > 0 } mt ? mt : c.MovieTag;
+                c.TvTag = S("TvTag") is { Length: > 0 } tt ? tt : c.TvTag;
+                c.DailyLimitPerUser = int.TryParse(S("DailyLimitPerUser"), out var lim) ? lim : c.DailyLimitPerUser;
+                c.AllowAllUsers = B("AllowAllUsers") ?? c.AllowAllUsers;
+                c.ShowCam = B("ShowCam") ?? c.ShowCam;
+                c.SyncTorvia = B("SyncTorvia") ?? c.SyncTorvia;
+                c.ReturnStreamLink = B("ReturnStreamLink") ?? c.ReturnStreamLink;
+                var users = r.Element("AllowedUserIds")?.Elements().Select(e => e.Value.Trim()).Where(v => v.Length > 0).ToArray();
+                if (users is { Length: > 0 })
+                {
+                    c.AllowedUserIds = users;
+                }
+            }
+
+            Configuration.SearchSettingsImported = true;
+            SaveConfiguration();
+        }
+        catch (Exception)
+        {
+            // Old settings unreadable: start with the defaults.
+        }
     }
 }

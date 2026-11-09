@@ -10,6 +10,12 @@
         <div class="content-primary">
             <h2 class="sectionTitle">Torvia</h2>
             <p style="margin-top:-.5em;opacity:.75"><i>Straight from TorBox to Jellyfin</i></p>
+            <div class="tvTabs" style="display:flex;gap:.5em;margin:1em 0 1.2em;border-bottom:1px solid rgba(255,255,255,.12)">
+                <button type="button" class="tvTab" data-tab="main">Torvia</button>
+                <button type="button" class="tvTab" data-tab="search">Torvia Search</button>
+            </div>
+
+            <div class="tvPane" data-pane="main">
             <p>Your TorBox movies and series as Jellyfin libraries, played straight from TorBox. Watch history stays on this server for every user.</p>
 
             <div id="ptbStats" style="display:none;padding:1em 1.2em;border-radius:10px;margin:1em 0;background:linear-gradient(135deg,rgba(34,211,238,.14),rgba(168,85,247,.16));border:1px solid rgba(168,85,247,.35)"></div>
@@ -70,6 +76,69 @@
                     <button is="emby-button" type="button" id="ptbSync" class="raised block"><span>Sync now</span></button>
                 </div>
             </form>
+            </div>
+
+            <div class="tvPane" data-pane="search" style="display:none">
+            <p>Users you allow below get a <b>Search &amp; Add</b> button in PHOENIXA. They search a title, pick a release that TorBox already has cached, and it is added to your TorBox with a tag. Torvia then brings it into Jellyfin. Your API keys stay on this server; apps never see them.</p>
+
+            <div id="tsStatus" style="padding:1em;border-radius:8px;background:rgba(255,255,255,0.06);margin:1em 0;line-height:1.6">Loading…</div>
+
+            <form id="TorviaSearchForm">
+                <h3 class="sectionTitle">Keys</h3>
+                <div class="fieldDescription" style="margin-bottom:1em">The TorBox API key is the one on the Torvia tab.</div>
+                <div class="inputContainer">
+                    <input is="emby-input" type="password" id="TmdbApiKey" label="TMDB API key" autocomplete="off" />
+                    <div class="fieldDescription">themoviedb.org → Settings → API. The v3 key or the v4 read access token both work. TMDB goes through this server's proxy (your WARP proxy).</div>
+                </div>
+                <div class="inputContainer">
+                    <input is="emby-input" type="text" id="TorrentioUrl" label="Torrentio address" />
+                    <div class="fieldDescription">Default https://torrentio.strem.fun. You can paste a configured Torrentio link (with providers chosen); /manifest.json at the end is removed.</div>
+                </div>
+
+                <h3 class="sectionTitle">Who can use it</h3>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label><input is="emby-checkbox" type="checkbox" id="AllowAllUsers" /><span>Every user on this server</span></label>
+                    <div class="fieldDescription checkboxFieldDescription">Leave off and tick users below to keep it private. Admins can always use it.</div>
+                </div>
+                <div id="tsUsers" style="margin:.5em 0 1.5em 0"></div>
+                <div class="inputContainer">
+                    <input is="emby-input" type="number" id="DailyLimitPerUser" label="Adds per user per day" min="0" max="500" />
+                    <div class="fieldDescription">0 = no limit. Admins have no limit. Counts reset at midnight UTC and when the server restarts.</div>
+                </div>
+
+                <h3 class="sectionTitle">Tags</h3>
+                <div class="inputContainer">
+                    <input is="emby-input" type="text" id="Tags" label="Tags users can pick (comma separated)" />
+                    <div class="fieldDescription">Use the same TorBox tags as your Torvia tag folders, e.g. movies, tv-shows, cinema.</div>
+                </div>
+                <div class="inputContainer">
+                    <input is="emby-input" type="text" id="MovieTag" label="Default tag for movies" />
+                </div>
+                <div class="inputContainer">
+                    <input is="emby-input" type="text" id="TvTag" label="Default tag for TV shows" />
+                </div>
+
+                <h3 class="sectionTitle">Options</h3>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label><input is="emby-checkbox" type="checkbox" id="SyncTorvia" /><span>Sync Torvia after each add</span></label>
+                    <div class="fieldDescription checkboxFieldDescription">Starts Torvia's "Sync TorBox library" task so the title shows up in Jellyfin right away.</div>
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label><input is="emby-checkbox" type="checkbox" id="ReturnStreamLink" /><span>Give a direct stream link after adding</span></label>
+                    <div class="fieldDescription checkboxFieldDescription">The app can offer "Play now" before Jellyfin has the title.</div>
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label><input is="emby-checkbox" type="checkbox" id="ShowCam" /><span>Show CAM/TS releases</span></label>
+                    <div class="fieldDescription checkboxFieldDescription">They are marked ⚠️ and always listed last.</div>
+                </div>
+
+                <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
+            </form>
+
+            <h3 class="sectionTitle" style="margin-top:2em">Recent adds</h3>
+            <div id="tsHistory" style="opacity:.85;line-height:1.7">—</div>
+
+            </div>
 
             <div style="margin-top:2.5em;text-align:center;opacity:.8;line-height:1.7">
                 <div><b>Torvia</b> : Made by Hanson D with ❤️</div>
@@ -196,6 +265,106 @@
                     setTimeout(loadStatus, 8000);
                 });
             });
+        })();
+    </script>
+    <script type="text/javascript">
+        (function () {
+            var pluginId = 'd793e3f9-364f-4640-9ebb-7c807bfcb90e';
+            var page = document.querySelector('#PhoenicxTorBoxPage');
+            var fields = ['TmdbApiKey', 'TorrentioUrl', 'Tags', 'MovieTag', 'TvTag', 'DailyLimitPerUser'];
+            var checks = ['AllowAllUsers', 'SyncTorvia', 'ReturnStreamLink', 'ShowCam'];
+
+            function esc(s) {
+                return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                });
+            }
+
+            function api(path) {
+                return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl(path), dataType: 'json' });
+            }
+
+            function loadStatus() {
+                api('TorviaSearch/Status').then(function (s) {
+                    var web = ApiClient.getUrl('TorviaSearch/Web');
+                    page.querySelector('#tsStatus').innerHTML =
+                        (s.ready ? '✅ Ready.' : '⚠️ Add the TMDB key here (and the TorBox key on the Torvia tab).') + '<br>' +
+                                                'Web page for allowed users: <a href="' + esc(web) + '" target="_blank" style="color:inherit">' + esc(web) + '</a><br>' +
+                        '<span style="opacity:.7">Version ' + esc(s.version) + '</span>';
+                }, function () {
+                    page.querySelector('#tsStatus').textContent = 'Could not read status.';
+                });
+
+                api('TorviaSearch/History').then(function (h) {
+                    var items = (h && h.items) || [];
+                    page.querySelector('#tsHistory').innerHTML = items.length ? items.map(function (i) {
+                        return '<div><b>' + esc(i.user) + '</b> · ' + esc(i.title) + ' <span style="opacity:.6">[' + esc(i.tag) + '] ' +
+                            esc(new Date(i.when).toLocaleString()) + '</span></div>';
+                    }).join('') : 'Nothing added since the server started.';
+                });
+            }
+
+            function loadUsers(allowed) {
+                ApiClient.getUsers().then(function (users) {
+                    var box = page.querySelector('#tsUsers');
+                    box.innerHTML = users.map(function (u) {
+                        var isAdmin = u.Policy && u.Policy.IsAdministrator;
+                        var on = isAdmin || allowed.indexOf(u.Id) >= 0 || allowed.indexOf(u.Id.replace(/-/g, '')) >= 0;
+                        return '<label style="display:flex;align-items:center;gap:.6em;padding:.25em 0">' +
+                            '<input type="checkbox" class="tsUser" data-id="' + esc(u.Id) + '"' + (on ? ' checked' : '') + (isAdmin ? ' disabled' : '') + ' />' +
+                            '<span>' + esc(u.Name) + (isAdmin ? ' <span style="opacity:.6">(admin — always allowed)</span>' : '') + '</span></label>';
+                    }).join('');
+                });
+            }
+
+            page.addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+                    fields.forEach(function (f) { page.querySelector('#' + f).value = c[f] == null ? '' : c[f]; });
+                    checks.forEach(function (f) { page.querySelector('#' + f).checked = !!c[f]; });
+                    loadUsers(c.AllowedUserIds || []);
+                    loadStatus();
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            page.querySelector('#TorviaSearchForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+                    fields.forEach(function (f) { c[f] = page.querySelector('#' + f).value.trim(); });
+                    c.DailyLimitPerUser = parseInt(c.DailyLimitPerUser, 10) || 0;
+                    checks.forEach(function (f) { c[f] = page.querySelector('#' + f).checked; });
+                    c.AllowedUserIds = Array.prototype.slice.call(page.querySelectorAll('.tsUser'))
+                        .filter(function (x) { return x.checked && !x.disabled; })
+                        .map(function (x) { return x.getAttribute('data-id'); });
+                    ApiClient.updatePluginConfiguration(pluginId, c).then(function (r) {
+                        Dashboard.processPluginConfigurationUpdateResult(r);
+                        loadStatus();
+                    });
+                });
+                return false;
+            });
+        })();
+    </script>
+    <script type="text/javascript">
+        (function () {
+            var page = document.querySelector('#PhoenicxTorBoxPage');
+            function show(name) {
+                page.querySelectorAll('.tvPane').forEach(function (p) { p.style.display = p.getAttribute('data-pane') === name ? '' : 'none'; });
+                page.querySelectorAll('.tvTab').forEach(function (b) {
+                    var on = b.getAttribute('data-tab') === name;
+                    b.style.cssText = 'background:none;border:0;border-bottom:3px solid ' + (on ? '#a855f7' : 'transparent') +
+                        ';color:inherit;padding:.6em 1em;font-size:1em;font-weight:' + (on ? '700' : '400') + ';opacity:' + (on ? '1' : '.65') + ';cursor:pointer';
+                });
+                try { sessionStorage.setItem('torviaTab', name); } catch (e) { }
+            }
+            page.querySelectorAll('.tvTab').forEach(function (b) {
+                b.addEventListener('click', function () { show(b.getAttribute('data-tab')); });
+            });
+            var start = 'main';
+            try { start = sessionStorage.getItem('torviaTab') || 'main'; } catch (e) { }
+            show(start);
         })();
     </script>
 </div>

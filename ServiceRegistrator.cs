@@ -20,6 +20,13 @@ public class ServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<LibrarySync>();
         serviceCollection.AddSingleton<DirectPlayFilter>();
         serviceCollection.AddHostedService<SyncScheduleUpdater>();
+        // Torvia Search (search any movie or show and add it to TorBox)
+        serviceCollection.AddSingleton<TorviaSearch.Services.TmdbClient>();
+        serviceCollection.AddSingleton<TorviaSearch.Services.TorrentioClient>();
+        serviceCollection.AddSingleton<TorviaSearch.Services.TorBoxApi>();
+        serviceCollection.AddSingleton<TorviaSearch.Services.AddStore>();
+        serviceCollection.AddSingleton<TorviaSearch.Services.SearchService>();
+
         serviceCollection.AddSingleton<TitleGuard>();
         serviceCollection.AddHostedService(sp => sp.GetRequiredService<TitleGuard>());
         serviceCollection.AddSingleton<StreamStats>();

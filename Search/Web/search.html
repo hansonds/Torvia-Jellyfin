@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Torvia · Search and Add</title>
+<style>
+  :root { --bg:#0b0b10; --card:#15151d; --line:#2a2a36; --text:#ececf1; --mute:#9a9aab; --accent:#ff6a2b; --accent2:#ffb347; --ok:#3ccf8e; --warn:#ffcc4d; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:radial-gradient(1200px 600px at 80% -10%,#2a1408 0%,var(--bg) 55%); color:var(--text); min-height:100vh; }
+  header { display:flex; align-items:center; gap:.8rem; padding:1.1rem 1.4rem; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(11,11,16,.85); backdrop-filter:blur(10px); z-index:5; }
+  header h1 { font-size:1.15rem; margin:0; letter-spacing:.04em; }
+  header h1 span { background:linear-gradient(90deg,var(--accent),var(--accent2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  header .who { margin-left:auto; color:var(--mute); font-size:.85rem; }
+  main { max-width:1100px; margin:0 auto; padding:1.4rem; }
+  .bar { display:flex; gap:.6rem; }
+  input, select, button { font:inherit; color:var(--text); background:var(--card); border:1px solid var(--line); border-radius:10px; padding:.75rem 1rem; }
+  input:focus, select:focus, button:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+  .bar input { flex:1; min-width:0; font-size:1.05rem; }
+  button { cursor:pointer; background:linear-gradient(135deg,var(--accent),#e2451a); border:none; font-weight:600; }
+  button.ghost { background:var(--card); border:1px solid var(--line); font-weight:500; }
+  button:disabled { opacity:.5; cursor:default; }
+  .hint { color:var(--mute); font-size:.85rem; margin:.5rem 0 1.2rem; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:1rem; }
+  .poster { background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; cursor:pointer; transition:transform .15s,border-color .15s; text-align:left; padding:0; font-weight:400; }
+  .poster:hover, .poster:focus { transform:translateY(-3px); border-color:var(--accent); }
+  .poster img, .poster .noimg { width:100%; aspect-ratio:2/3; object-fit:cover; display:block; background:#1d1d27; }
+  .poster .noimg { display:flex; align-items:center; justify-content:center; color:var(--mute); }
+  .poster .t { padding:.55rem .65rem .7rem; font-size:.9rem; line-height:1.25; }
+  .poster .y { color:var(--mute); font-size:.78rem; }
+  .badge { display:inline-block; font-size:.7rem; padding:.1rem .45rem; border-radius:6px; background:#262633; color:var(--mute); margin-right:.3rem; }
+  .hero { display:flex; gap:1.3rem; align-items:flex-start; margin-bottom:1.2rem; }
+  .hero img { width:150px; border-radius:12px; border:1px solid var(--line); }
+  .hero h2 { margin:.1rem 0 .4rem; }
+  .hero p { color:var(--mute); line-height:1.5; margin:.4rem 0; max-width:65ch; }
+  .row { display:flex; flex-wrap:wrap; gap:.6rem; align-items:center; margin:.8rem 0; }
+  .rel { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.9rem 1rem; margin:.6rem 0; display:flex; gap:1rem; align-items:center; }
+  .rel.best { border-color:var(--accent); box-shadow:0 0 0 1px rgba(255,106,43,.25); }
+  .rel .info { flex:1; min-width:0; }
+  .rel .name { font-size:.8rem; color:var(--mute); overflow-wrap:anywhere; margin-top:.35rem; }
+  .chips { display:flex; flex-wrap:wrap; gap:.35rem; }
+  .chip { font-size:.78rem; padding:.18rem .55rem; border-radius:999px; background:#22222d; border:1px solid var(--line); }
+  .chip.q { background:rgba(255,106,43,.15); border-color:rgba(255,106,43,.5); color:#ffb48f; font-weight:600; }
+  .chip.cam { background:rgba(255,204,77,.12); border-color:rgba(255,204,77,.5); color:var(--warn); }
+  .chip.tv { background:rgba(90,160,255,.16); border-color:rgba(90,160,255,.55); color:#a9ccff; font-weight:700; }
+  .plays { font-size:.85rem; margin-top:.45rem; color:var(--text); overflow-wrap:anywhere; }
+  .plays span { color:var(--mute); font-size:.78rem; }
+  .chip.best { background:var(--accent); color:#000; border:none; font-weight:700; }
+  .filters { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.8rem 1rem; margin:.8rem 0; }
+  .fgroup { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; margin:.35rem 0; }
+  .flabel { width:5.5rem; color:var(--mute); font-size:.82rem; }
+  .fchip { background:#1d1d27; border:1px solid var(--line); border-radius:999px; padding:.35rem .8rem; font-size:.85rem; font-weight:500; }
+  .fchip.on { background:rgba(255,106,43,.18); border-color:var(--accent); color:#ffc4a6; }
+  .fchip .n { color:var(--mute); font-size:.75rem; margin-left:.15rem; }
+  .fchip.reset { margin-left:auto; background:transparent; }
+  @media (max-width:600px) { .flabel { width:100%; } }
+  .tabs { display:flex; gap:.3rem; margin-left:1rem; }
+  .tab { background:transparent; border:1px solid transparent; padding:.45rem .9rem; font-weight:500; color:var(--mute); border-radius:999px; }
+  .tab.on { background:rgba(255,106,43,.16); border-color:rgba(255,106,43,.5); color:#ffc4a6; }
+  .add { display:flex; gap:.9rem; align-items:center; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:.7rem; margin:.6rem 0; }
+  .add img, .add .noimg { width:64px; aspect-ratio:2/3; object-fit:cover; border-radius:8px; background:#1d1d27; flex:none; }
+  .add .info { flex:1; min-width:0; }
+  .add .t { font-weight:600; }
+  .add .name { font-size:.8rem; color:var(--mute); overflow-wrap:anywhere; }
+  .add .acts { display:flex; flex-direction:column; gap:.4rem; flex:none; }
+  a.btn { display:inline-block; text-align:center; text-decoration:none; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:.6rem 1rem; background:var(--card); }
+  button.danger { color:#ff9a9a; border-color:rgba(255,90,90,.45); }
+  button.danger.sure { background:#c62828; color:#fff; border-color:#c62828; }
+  .chip.okc { background:rgba(60,207,142,.14); border-color:rgba(60,207,142,.5); color:#8fe8bf; }
+  .msg { padding:.9rem 1rem; border-radius:10px; margin:1rem 0; background:var(--card); border:1px solid var(--line); line-height:1.5; }
+  .msg.ok { border-color:rgba(60,207,142,.5); }
+  .msg.err { border-color:rgba(255,90,90,.5); }
+  .msg a { color:var(--accent2); }
+  .spin { display:inline-block; width:1rem; height:1rem; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:s 1s linear infinite; vertical-align:-3px; margin-right:.5rem; }
+  @keyframes s { to { transform:rotate(360deg); } }
+  .login { max-width:360px; margin:4rem auto; display:flex; flex-direction:column; gap:.7rem; }
+  footer { text-align:center; color:var(--mute); font-size:.8rem; padding:2rem; }
+  footer a { color:inherit; }
+  @media (max-width:600px) {
+    header { flex-wrap:wrap; padding:.8rem 1rem; gap:.3rem; }
+    header h1 { font-size:1rem; }
+    header .who { margin-left:0; width:100%; font-size:.78rem; }
+    .tabs { margin-left:0; width:100%; }
+    .add { flex-wrap:wrap; }
+    .add .acts { flex-direction:row; width:100%; }
+    .add .acts > * { flex:1; }
+    main { padding:1rem .8rem; }
+    .bar input { font-size:16px; padding:.7rem .8rem; }
+    .bar button { padding:.7rem .9rem; }
+    .grid { grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); gap:.6rem; }
+    .hero { flex-direction:column; } .hero img { width:120px; }
+    .row select { flex:1 1 40%; min-width:0; }
+    #go { flex:1 1 100%; }
+    .rel { flex-direction:column; align-items:stretch; }
+    .rel button { width:100%; }
+    .login { margin:2rem auto; }
+    .login input { font-size:16px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1><span>Torvia</span> · Search and Add</h1>
+  <nav class="tabs" id="tabs" hidden>
+    <button class="tab on" data-tab="search">Search</button>
+    <button class="tab" data-tab="adds" id="addsTab">My adds</button>
+  </nav>
+  <div class="who" id="who"></div>
+</header>
+<main id="app"></main>
+<footer>Torvia Search · <a href="https://phoenicx.org" target="_blank" rel="noopener">phoenicx.org</a></footer>
+
+<script>
+(function () {
+  var base = location.pathname.replace(/\/TorviaSearch\/Web\/?$/i, '');
+  var app = document.getElementById('app');
+  var auth = null;
+  var status = null;
+  var deviceId = (function () { try { var d = localStorage.getItem('ts_device'); if (!d) { d = 'ts' + Math.random().toString(36).slice(2); localStorage.setItem('ts_device', d); } return d; } catch (e) { return 'ts-web'; } })();
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function header(token) {
+    return 'MediaBrowser Client="Torvia Search", Device="Browser", DeviceId="' + deviceId + '", Version="1.0.0"' + (token ? ', Token="' + token + '"' : '');
+  }
+  function call(method, path, body) {
+    var opts = { method: method, headers: { 'Authorization': header(auth && auth.token) } };
+    if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    return fetch(base + '/' + path, opts).then(function (r) {
+      return r.text().then(function (t) {
+        var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {}
+        if (r.status === 401) { sessionEnded(); return new Promise(function () {}); } // stop here; sign-in takes over
+        if (!r.ok) { var e = new Error((j && (j.error || j.message)) || ('Error ' + r.status)); e.status = r.status; e.body = j; throw e; }
+        return j;
+      });
+    });
+  }
+  function loading(text) { return '<div class="msg"><span class="spin"></span>' + esc(text) + '</div>'; }
+
+  // Where a sign-in can come from, best first:
+  // 1. a token handed over by an app: /TorviaSearch/Web#token=…  (the app is already signed in)
+  // 2. this page's own saved sign-in
+  // 3. the Jellyfin web app's sign-in in this browser (this server first)
+  var store = (function () {
+    var mem = {};
+    function get(k) { try { return localStorage.getItem(k); } catch (e) { return mem[k] || null; } }
+    function set(k, v) { mem[k] = v; try { localStorage.setItem(k, v); } catch (e) {} }
+    function del(k) { delete mem[k]; try { localStorage.removeItem(k); } catch (e) {} }
+    return { get: get, set: set, del: del };
+  })();
+  var candidates = [];
+
+  function readHandoff() {
+    var h = location.hash.replace(/^#/, '');
+    var q = location.search.replace(/^\?/, '');
+    var p = {};
+    (h + '&' + q).split('&').forEach(function (kv) {
+      var i = kv.indexOf('='); if (i > 0) p[decodeURIComponent(kv.slice(0, i)).toLowerCase()] = decodeURIComponent(kv.slice(i + 1));
+    });
+    var token = p.token || p.api_key || p.accesstoken;
+    if (token) {
+      // Remove the token from the address bar and history.
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+      return { token: token, userId: p.userid || '', name: p.name || '', fromApp: true };
+    }
+    return null;
+  }
+
+  function buildCandidates() {
+    var list = [];
+    var handed = readHandoff();
+    if (handed) list.push(handed);
+    try { var mine = JSON.parse(store.get('ts_auth') || 'null'); if (mine && mine.token) list.push(mine); } catch (e) {}
+    try {
+      var c = JSON.parse(store.get('jellyfin_credentials') || 'null');
+      var servers = (c && c.Servers || []).filter(function (x) { return x.AccessToken; });
+      var here = location.origin.toLowerCase();
+      servers.sort(function (x, y) {
+        function m(s) { return [s.ManualAddress, s.LocalAddress, s.RemoteAddress].some(function (u) { return u && u.toLowerCase().indexOf(here) === 0; }) ? 0 : 1; }
+        return m(x) - m(y);
+      });
+      servers.forEach(function (sv) { list.push({ token: sv.AccessToken, userId: sv.UserId, fromJellyfin: true }); });
+    } catch (e) {}
+    var seen = {};
+    return list.filter(function (x) { if (seen[x.token]) return false; seen[x.token] = 1; return true; });
+  }
+
+  function useNext(reason) {
+    auth = candidates.shift() || null;
+    if (auth) start(); else showLogin(reason);
+  }
+
+  function signOut() { store.del('ts_auth'); auth = null; candidates = []; showLogin(); }
+
+  function sessionEnded() {
+    // The token was refused: forget it if it was ours, then try the next one or ask to sign in.
+    if (auth && !auth.fromJellyfin) store.del('ts_auth');
+    useNext(auth && auth.justSignedIn ? 'Signed in, but the server refused the session. Please try again.' : '');
+  }
+
+  function showLogin(err) {
+    document.getElementById('who').textContent = '';
+    app.innerHTML = '<form class="login" id="lf"><h2>Sign in</h2><p class="hint">Use your Jellyfin account.</p>' +
+      (err ? '<div class="msg err">' + esc(err) + '</div>' : '') +
+      '<input id="lu" placeholder="Username" autocomplete="username" required>' +
+      '<input id="lp" type="password" placeholder="Password" autocomplete="current-password">' +
+      '<button type="submit">Sign in</button></form>';
+    document.getElementById('lf').onsubmit = function (e) {
+      e.preventDefault();
+      fetch(base + '/Users/AuthenticateByName', {
+        method: 'POST', headers: { 'Authorization': header(null), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Username: document.getElementById('lu').value, Pw: document.getElementById('lp').value })
+      }).then(function (r) { if (!r.ok) throw new Error('Wrong username or password.'); return r.json(); })
+        .then(function (j) { auth = { token: j.AccessToken, userId: j.User.Id, name: j.User.Name }; store.set('ts_auth', JSON.stringify(auth)); auth.justSignedIn = true; candidates = []; start(); })
+        .catch(function (e) { showLogin(e.message); });
+    };
+  }
+
+  function start() {
+    app.innerHTML = loading('Checking your access…');
+    call('GET', 'TorviaSearch/Status').then(function (s) {
+      status = s;
+      document.getElementById('who').innerHTML = (auth.name ? esc(auth.name) + ' · ' : '') +
+        (s.remainingToday == null ? 'no daily limit' : s.remainingToday + ' adds left today') +
+        (auth.fromJellyfin || auth.fromApp ? '' : ' · <a href="#" id="so" style="color:inherit">Sign out</a>');
+      var so = document.getElementById('so'); if (so) so.onclick = function (e) { e.preventDefault(); signOut(); };
+      if (!s.allowed) { app.innerHTML = '<div class="msg err">Search &amp; Add isn\'t turned on for your account. Ask the server owner.</div>'; return; }
+      if (!s.ready) { app.innerHTML = '<div class="msg err">Search &amp; Add isn\'t set up yet (API keys missing in the plugin settings).</div>'; return; }
+      document.getElementById('tabs').hidden = false;
+      document.getElementById('addsTab').textContent = s.isAdmin ? 'All adds' : 'My adds';
+      showSearch('');
+    }).catch(function (e) {
+      if (e.status === 401) return; // already handled
+      if (e.status === 404) app.innerHTML = '<div class="msg err">The Torvia Search plugin isn\'t installed on this server.</div>';
+      else if (e.status === 403) app.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>';
+      else app.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>';
+    });
+  }
+
+  var lastQuery = '';
+  function setTab(t) {
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === t); });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
+    b.onclick = function () {
+      if (b.getAttribute('data-tab') === 'adds') showAdds(''); else showSearch(lastQuery);
+    };
+  });
+
+  function showAdds(user) {
+    setTab('adds');
+    var admin = status && status.isAdmin;
+    app.innerHTML = loading('Loading ' + (admin ? 'all adds' : 'your adds') + '…');
+    call('GET', 'TorviaSearch/Adds' + (admin ? '?all=true' + (user ? '&user=' + encodeURIComponent(user) : '') : '')).then(function (j) {
+      var items = j.items || [];
+      var html = '<h2 style="margin:.2rem 0 .3rem">' + (j.all ? 'All adds' : 'My adds') + '</h2>' +
+        '<div class="hint">' + (j.all ? 'Everything your users added. You can remove any of them.' : 'Titles you added. Removing one deletes it from TorBox and Jellyfin.') + '</div>';
+      if (j.all && j.users && j.users.length) {
+        var total = j.users.reduce(function (n, u) { return n + u.count; }, 0);
+        html += '<div class="fgroup" style="margin-bottom:1rem"><button class="fchip' + (!user ? ' on' : '') + '" data-u="">All users <span class="n">' + total + '</span></button>' +
+          j.users.map(function (u) { return '<button class="fchip' + (user === u.id ? ' on' : '') + '" data-u="' + esc(u.id) + '">' + esc(u.name) + ' <span class="n">' + u.count + '</span></button>'; }).join('') + '</div>';
+      }
+      html += '<div id="addsMsg"></div>';
+      if (!items.length) {
+        html += '<div class="msg">' + (j.all ? 'Nothing added yet.' : 'You haven\'t added anything yet. Use Search to add a movie or show.') + '</div>';
+      } else {
+        html += items.map(function (r) {
+          var when = new Date(r.when);
+          return '<div class="add" id="a_' + esc(r.id) + '">' +
+            (r.poster ? '<img loading="lazy" src="' + esc(r.poster) + '" alt="">' : '<div class="noimg"></div>') +
+            '<div class="info"><div class="t">' + esc(r.title) + ' <span style="color:var(--mute);font-weight:400">' + (r.year || '') + '</span></div>' +
+            '<div class="chips" style="margin:.35rem 0">' + chip(r.type === 'tv' ? 'TV' : 'Movie') + chip(r.label, 'tv') + chip(r.quality) + chip(r.size) + chip(r.tag) +
+            (r.jellyfinItemId ? chip('In Jellyfin', 'okc') : '') + (r.alreadyInTorBox ? chip('Was already in TorBox') : '') + '</div>' +
+            '<div class="name">' + (j.all ? '<b style="color:var(--text)">' + esc(r.userName) + '</b> · ' : '') + esc(when.toLocaleString()) + '<br>' + esc(r.release) + '</div></div>' +
+            '<div class="acts">' +
+            (r.jellyfinItemId ? '<a class="btn ghost" href="' + base + '/web/#/details?id=' + esc(r.jellyfinItemId) + '">Open</a>' : '') +
+            (r.canRemove ? '<button class="ghost danger" data-del="' + esc(r.id) + '">Remove</button>' : '') +
+            '</div></div>';
+        }).join('');
+      }
+      app.innerHTML = html;
+      Array.prototype.forEach.call(app.querySelectorAll('[data-u]'), function (b) { b.onclick = function () { showAdds(b.getAttribute('data-u')); }; });
+      Array.prototype.forEach.call(app.querySelectorAll('[data-del]'), function (b) {
+        b.onclick = function () { removeAdd(b); };
+      });
+    }).catch(function (e) { app.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+  }
+
+  // Two taps to remove (no pop-up dialogs, so it works inside app WebViews too).
+  function removeAdd(b) {
+    if (!b.classList.contains('sure')) {
+      b.classList.add('sure');
+      b.textContent = 'Tap again to remove';
+      setTimeout(function () { if (b.isConnected && !b.disabled) { b.classList.remove('sure'); b.textContent = 'Remove'; } }, 4000);
+      return;
+    }
+    b.disabled = true;
+    b.innerHTML = '<span class="spin"></span>Removing';
+    var id = b.getAttribute('data-del');
+    var msg = document.getElementById('addsMsg');
+    call('DELETE', 'TorviaSearch/Adds/' + encodeURIComponent(id)).then(function (r) {
+      var card = document.getElementById('a_' + id);
+      if (card) card.remove();
+      msg.innerHTML = '<div class="msg ok">✅ ' + esc(r.message) + '</div>';
+      if (status && status.remainingToday != null) {
+        call('GET', 'TorviaSearch/Status').then(function (st) { status = st; });
+      }
+    }).catch(function (e) {
+      b.disabled = false; b.classList.remove('sure'); b.textContent = 'Remove';
+      msg.innerHTML = '<div class="msg err">' + esc((e.body && e.body.message) || e.message) + '</div>';
+    });
+  }
+
+  function showSearch(q) {
+    setTab('search');
+    app.innerHTML = '<form class="bar" id="sf"><input id="q" placeholder="Movie or show name, TMDB number or link, or IMDb ID (tt…)" value="' + esc(q) + '" autofocus><button type="submit">Search</button></form>' +
+      '<div class="hint">Only releases already cached on TorBox are shown, so whatever you add is ready at once.</div><div id="res"></div>';
+    document.getElementById('sf').onsubmit = function (e) { e.preventDefault(); search(document.getElementById('q').value.trim()); };
+    if (q) search(q);
+  }
+
+  function search(q) {
+    if (!q) return;
+    lastQuery = q;
+    var res = document.getElementById('res');
+    res.innerHTML = loading('Searching…');
+    call('GET', 'TorviaSearch/Search?query=' + encodeURIComponent(q)).then(function (j) {
+      var list = j.results || [];
+      if (!list.length) { res.innerHTML = '<div class="msg">Nothing found. Try another spelling, add the year, or paste a TMDB / IMDb link.</div>'; return; }
+      res.innerHTML = '<div class="grid">' + list.map(function (t, i) {
+        return '<button class="poster" data-i="' + i + '">' + (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">' : '<div class="noimg">No poster</div>') +
+          '<div class="t">' + esc(t.title) + '<div class="y"><span class="badge">' + (t.type === 'tv' ? 'TV' : 'Movie') + '</span>' + (t.year || '') + '</div></div></button>';
+      }).join('') + '</div>';
+      Array.prototype.forEach.call(res.querySelectorAll('.poster'), function (b) {
+        b.onclick = function () { openTitle(list[+b.getAttribute('data-i')], q); };
+      });
+    }).catch(function (e) { res.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+  }
+
+  function openTitle(t, q) {
+    app.innerHTML = loading('Loading ' + t.title + '…');
+    call('GET', 'TorviaSearch/Title/' + t.type + '/' + t.tmdbId).then(function (d) {
+      var x = d.title;
+      var html = '<button class="ghost" id="back">← Back to results</button>' +
+        '<div class="hero" style="margin-top:1rem">' + (x.poster ? '<img src="' + esc(x.poster) + '" alt="">' : '') +
+        '<div><h2>' + esc(x.title) + ' <span style="color:var(--mute);font-weight:400">' + (x.year || '') + '</span></h2>' +
+        '<span class="badge">' + (x.type === 'tv' ? 'TV show' : 'Movie') + '</span>' + (x.rating ? '<span class="badge">★ ' + x.rating + '</span>' : '') +
+        (d.imdbId ? '<span class="badge">' + esc(d.imdbId) + '</span>' : '') +
+        (d.jellyfinItemId ? '<span class="badge" style="color:var(--ok)">Already in Jellyfin</span>' : '') +
+        '<p>' + esc(x.overview) + '</p></div></div>';
+      if (x.type === 'tv') {
+        html += '<div class="row"><select id="se">' + d.seasons.map(function (s) {
+          return '<option value="' + s.season + '" data-n="' + s.episodes + '">' + esc(s.name) + ' (' + s.episodes + ' ep)</option>';
+        }).join('') + '</select><select id="ep"></select><button id="go">Find releases</button></div>';
+      } else {
+        html += '<div class="row"><button id="go">Find releases</button></div>';
+      }
+      html += '<div id="rels"></div>';
+      app.innerHTML = html;
+      document.getElementById('back').onclick = function () { showSearch(q); };
+      var se = document.getElementById('se'), ep = document.getElementById('ep');
+      function fillEp() {
+        var n = +se.options[se.selectedIndex].getAttribute('data-n');
+        var o = '<option value="all">Whole season</option>';
+        for (var i = 1; i <= n; i++) o += '<option value="' + i + '">Episode ' + i + '</option>';
+        ep.innerHTML = o;
+      }
+      if (se) { if (!d.seasons.length) { document.getElementById('rels').innerHTML = '<div class="msg">TMDB lists no seasons for this show yet.</div>'; } else { se.onchange = fillEp; fillEp(); } }
+      document.getElementById('go').onclick = function () {
+        var p = 'TorviaSearch/Releases?type=' + x.type + '&tmdbId=' + x.tmdbId;
+        var tv = null;
+        if (x.type === 'tv') {
+          tv = { season: +se.value, episode: ep.value === 'all' ? null : +ep.value };
+          p += '&season=' + tv.season + (tv.episode ? '&episode=' + tv.episode : '&wholeSeason=true');
+        }
+        releases(p, x);
+      };
+    }).catch(function (e) { app.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+  }
+
+  function chip(t, cls) { return t ? '<span class="chip ' + (cls || '') + '">' + esc(t) + '</span>' : ''; }
+
+  var view = null; // { all, x, wholeSeason, f }
+
+  function releases(path, x) {
+    var box = document.getElementById('rels');
+    box.innerHTML = loading('Finding releases cached on TorBox…');
+    call('GET', path).then(function (j) {
+      var all = j.releases || [];
+      if (!all.length) { box.innerHTML = '<div class="msg">No cached releases right now' + (j.wholeSeason ? ' for a whole-season pack. Try a single episode.' : '. Try again later.') + '</div>'; return; }
+      var has1080 = all.some(function (r) { return r.quality === '1080p'; });
+      view = { all: all, x: x, wholeSeason: j.wholeSeason, avail: j.available || {},
+        f: { quality: has1080 ? '1080p' : 'all', tenBit: false, hdr: false, langs: [], hideCam: false, sort: 'best', kind: 'all' },
+        note: has1080 ? '' : 'No 1080p releases, so all qualities are shown.' };
+      var tags = status.tags || [];
+      var def = x.type === 'tv' ? status.tvTag : status.movieTag;
+      box.innerHTML = '<div class="filters" id="filters"></div>' +
+        '<div class="row"><b id="cnt"></b><span style="margin-left:auto;color:var(--mute)">Tag</span><select id="tag">' +
+        tags.map(function (t) { return '<option' + (t === def ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select></div>' +
+        '<div id="added"></div><div id="list"></div>';
+      drawFilters();
+      drawList();
+    }).catch(function (e) { box.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+  }
+
+  function count(pred) { return view.all.filter(pred).length; }
+
+  function drawFilters() {
+    var f = view.f, a = view.all;
+    var qs = ['all', '4K', '1080p', '720p', '480p'].filter(function (q) { return q === 'all' || a.some(function (r) { return r.quality === q; }); });
+    var langs = {};
+    a.forEach(function (r) { (r.languages || []).forEach(function (l) { langs[l] = (langs[l] || 0) + 1; }); });
+    var langList = Object.keys(langs).sort(function (p, q) { return langs[q] - langs[p]; });
+    function btn(group, val, label, on, n) {
+      return '<button class="fchip' + (on ? ' on' : '') + '" data-g="' + group + '" data-v="' + esc(val) + '">' + esc(label) +
+        (n != null ? ' <span class="n">' + n + '</span>' : '') + '</button>';
+    }
+    var html = '<div class="fgroup"><span class="flabel">Quality</span>' + qs.map(function (q) {
+      return btn('quality', q, q === 'all' ? 'All' : q, f.quality === q, q === 'all' ? a.length : count(function (r) { return r.quality === q; }));
+    }).join('') + '</div>';
+    var eps = count(function (r) { return r.kind && !r.isSeasonPack; }), packs = count(function (r) { return r.isSeasonPack; });
+    if (eps && packs) {
+      html += '<div class="fgroup"><span class="flabel">Type</span>' +
+        btn('kind', 'all', 'All', f.kind === 'all', a.length) +
+        btn('kind', 'episode', 'This episode only', f.kind === 'episode', eps) +
+        btn('kind', 'pack', 'Packs', f.kind === 'pack', packs) + '</div>';
+    }
+    var nTen = count(function (r) { return r.bitDepth === 10; }), nHdr = count(function (r) { return r.hdr !== 'SDR'; });
+    var video = (nTen ? btn('tenBit', '1', '10-bit', f.tenBit, nTen) : '') +
+      (nHdr ? btn('hdr', '1', 'HDR / DV', f.hdr, nHdr) : '') +
+      (a.some(function (r) { return r.isCam; }) ? btn('hideCam', '1', 'Hide CAM/TS', f.hideCam, null) : '');
+    if (video) html += '<div class="fgroup"><span class="flabel">Video</span>' + video + '</div>';
+    if (langList.length) {
+      html += '<div class="fgroup"><span class="flabel">Language</span>' + langList.map(function (l) {
+        return btn('lang', l, l, f.langs.indexOf(l) >= 0, langs[l]);
+      }).join('') + '</div>';
+    }
+    html += '<div class="fgroup"><span class="flabel">Sort</span>' +
+      [['best', 'Best'], ['smallest', 'Small file'], ['largest', 'Large file'], ['seeders', 'Most seeders']].map(function (o) {
+        return btn('sort', o[0], o[1], f.sort === o[0], null);
+      }).join('') +
+      '<button class="fchip reset" data-g="reset" data-v="">Reset</button></div>';
+    if (view.note) html += '<div class="hint" style="margin:.2rem 0 0">' + esc(view.note) + '</div>';
+    var el = document.getElementById('filters');
+    el.innerHTML = html;
+    Array.prototype.forEach.call(el.querySelectorAll('.fchip'), function (b) {
+      b.onclick = function () {
+        var g = b.getAttribute('data-g'), v = b.getAttribute('data-v');
+        if (g === 'quality') f.quality = v;
+        else if (g === 'kind') f.kind = v;
+        else if (g === 'sort') f.sort = v;
+        else if (g === 'lang') { var i = f.langs.indexOf(v); if (i >= 0) f.langs.splice(i, 1); else f.langs.push(v); }
+        else if (g === 'reset') { f.quality = 'all'; f.tenBit = f.hdr = f.hideCam = false; f.langs = []; f.sort = 'best'; f.kind = 'all'; }
+        else f[g] = !f[g];
+        view.note = '';
+        drawFilters();
+        drawList();
+      };
+    });
+  }
+
+  function filtered() {
+    var f = view.f;
+    var list = view.all.filter(function (r) {
+      if (f.quality !== 'all' && r.quality !== f.quality) return false;
+      if (f.tenBit && r.bitDepth !== 10) return false;
+      if (f.hdr && r.hdr === 'SDR') return false;
+      if (f.hideCam && r.isCam) return false;
+      if (f.kind === 'episode' && r.isSeasonPack) return false;
+      if (f.kind === 'pack' && !r.isSeasonPack) return false;
+      if (f.langs.length && !(r.languages || []).some(function (l) { return f.langs.indexOf(l) >= 0; })) return false;
+      return true;
+    });
+    function camLast(p, q) { return (p.isCam ? 1 : 0) - (q.isCam ? 1 : 0); }
+    function sz(r) { return r.sizeBytes > 0 ? r.sizeBytes : Number.MAX_SAFE_INTEGER; }
+    if (f.sort === 'smallest') list.sort(function (p, q) { return camLast(p, q) || sz(p) - sz(q); });
+    else if (f.sort === 'largest') list.sort(function (p, q) { return camLast(p, q) || q.sizeBytes - p.sizeBytes; });
+    else if (f.sort === 'seeders') list.sort(function (p, q) { return camLast(p, q) || q.seeders - p.seeders; });
+    return list; // "best" keeps the server's order
+  }
+
+  function drawList() {
+    var list = filtered();
+    document.getElementById('cnt').textContent = list.length + ' of ' + view.all.length + ' cached release' + (view.all.length > 1 ? 's' : '');
+    var el = document.getElementById('list');
+    if (!list.length) { el.innerHTML = '<div class="msg">No releases match these filters. Try removing one.</div>'; return; }
+    el.innerHTML = list.map(function (r, i) {
+      var best = i === 0 && view.f.sort === 'best' && !r.isCam;
+      return '<div class="rel' + (best ? ' best' : '') + '"><div class="info"><div class="chips">' +
+        (best ? chip('Best', 'best') : '') + chip(r.label, 'tv') +
+        (r.isCam ? chip('⚠️ CAM/TS', 'cam') : chip(r.source)) + chip(r.quality === '?' ? '' : r.quality, 'q') + chip(r.codec) + chip(r.hdr) + chip(r.bitDepth + '-bit') +
+        chip(r.audio) + chip(r.languages && r.languages.join(' / ')) + chip(r.subtitles) + chip(r.container) +
+        chip(r.size ? (r.isSeasonPack && r.playsLabel ? 'Episode ' + r.size : r.size) : '') + chip(r.packSize ? 'Whole pack ' + r.packSize : '') +
+        chip('👤 ' + r.seeders + ' · ' + r.speed) +
+        '</div>' +
+        (r.playsLabel ? '<div class="plays">▶ Plays <b>' + esc(r.playsLabel) + '</b> · ' + esc(r.fileName) + '<br><span>Adds the whole pack to TorBox, so the other episodes come too.</span></div>' : '') +
+        '<div class="name">' + esc(r.name) + (!r.playsLabel && r.fileName && r.fileName !== r.name ? '<br>' + esc(r.fileName) : '') + '</div></div>' +
+        '<button data-h="' + esc(r.hash) + '">Add</button></div>';
+    }).join('');
+    Array.prototype.forEach.call(el.querySelectorAll('button[data-h]'), function (b) {
+      b.onclick = function () { add(b, view.x); };
+    });
+  }
+
+  function add(btn, x) {
+    var out = document.getElementById('added');
+    Array.prototype.forEach.call(document.querySelectorAll('button[data-h]'), function (b) { b.disabled = true; });
+    btn.innerHTML = '<span class="spin"></span>Adding';
+    out.innerHTML = '';
+    call('POST', 'TorviaSearch/Add', { hash: btn.getAttribute('data-h'), tag: document.getElementById('tag').value }).then(function (r) {
+      btn.textContent = 'Added ✓';
+      if (r.remainingToday != null) status.remainingToday = r.remainingToday;
+      out.innerHTML = '<div class="msg ok">✅ ' + esc(r.message) +
+        (r.streamUrl ? '<br><a href="' + esc(r.streamUrl) + '" target="_blank" rel="noopener">▶ Play now (direct TorBox link)</a>' : '') +
+        '<div id="jf" style="margin-top:.4rem;color:var(--mute)">' + (r.syncStarted ? '<span class="spin"></span>Waiting for it to show up in Jellyfin…' : '') + '</div></div>';
+      out.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (r.syncStarted) poll(x, 0);
+    }).catch(function (e) {
+      btn.textContent = 'Add';
+      Array.prototype.forEach.call(document.querySelectorAll('button[data-h]'), function (b) { b.disabled = false; });
+      out.innerHTML = '<div class="msg err">' + esc((e.body && e.body.message) || e.message) + '</div>';
+    });
+  }
+
+  function poll(x, n) {
+    var jf = document.getElementById('jf');
+    if (!jf) return;
+    if (n > 18) { jf.textContent = 'It will appear in Jellyfin after Torvia finishes syncing.'; return; }
+    setTimeout(function () {
+      call('GET', 'TorviaSearch/InLibrary/' + x.type + '/' + x.tmdbId).then(function (r) {
+        jf.innerHTML = '🎬 It\'s in Jellyfin now — <a href="' + base + '/web/#/details?id=' + esc(r.itemId) + '">open it</a>.';
+      }).catch(function () { poll(x, n + 1); });
+    }, 10000);
+  }
+
+  candidates = buildCandidates();
+  useNext('');
+})();
+</script>
+</body>
+</html>

@@ -75,6 +75,15 @@ even on a small server.
 - 🛟 **Safe fallback** — if TorBox doesn't give a link at that moment, Jellyfin plays it the normal
   way instead of failing.
 
+### 🔎 Torvia Search (Search & Add)
+- Users you choose can **search any movie or TV show** (by name, TMDB or IMDb link), pick a release
+  that is **already cached on TorBox**, and add it to your TorBox with a tag — Torvia then syncs it
+  straight into Jellyfin.
+- Used by PHOENIXA's **Search & Add** button, and as a web page at `/TorviaSearch/Web`.
+- Per-user access list, daily limit per user, tag choice, "My adds / All adds" list.
+- Settings on the **Torvia Search** tab of the plugin page (TMDB key, Torrentio address, users,
+  tags). The TorBox key is shared with Torvia. API details: [SEARCH-API.md](SEARCH-API.md).
+
 ### Safe and private
 - 🔒 **Your TorBox API key never leaves the server.** Apps only get short-lived TorBox links.
 - ✍️ **Signed play links** — nobody can guess a link to your files.
@@ -141,6 +150,7 @@ a restart. To update now: **Catalog → Torvia → pick the newest version → I
 | Nearest TorBox server for each viewer | Each viewer gets the TorBox server closest to them. | on |
 | Separate folder for each TorBox tag | One library per tag. | on |
 | Include usenet / web downloads | Also list those downloads. | on |
+| *Torvia Search tab:* TMDB API key, Torrentio address, allowed users, daily limit, tags, options | Search & Add settings. | off until a TMDB key is set |
 | Name fixes | Fix titles that come out wrong, one per line: `Kaithi.2019 = Kaithi (2019)` | empty |
 
 The page also shows the last sync result: movies, series, episodes, subtitles, tag folders, and any

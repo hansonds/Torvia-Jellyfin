@@ -62,4 +62,42 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Created on first start.
     /// </summary>
     public string SigningSecret { get; set; } = string.Empty;
+
+    // ---------------- Torvia Search (second tab) ----------------
+
+    /// <summary>Gets or sets the TMDB API key (v3 key or v4 read access token) for Torvia Search.</summary>
+    public string TmdbApiKey { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the Torrentio address (may include provider options).</summary>
+    public string TorrentioUrl { get; set; } = "https://torrentio.strem.fun";
+
+    /// <summary>Gets or sets a value indicating whether every signed-in user may use Search &amp; Add.</summary>
+    public bool AllowAllUsers { get; set; }
+
+    /// <summary>Gets or sets the ids of the users who may use Search &amp; Add (admins always may).</summary>
+    public string[] AllowedUserIds { get; set; } = Array.Empty<string>();
+
+    /// <summary>Gets or sets the tags users can pick when adding, comma separated.</summary>
+    public string Tags { get; set; } = "movies,tv-shows";
+
+    /// <summary>Gets or sets the default tag for movies added with Search &amp; Add.</summary>
+    public string MovieTag { get; set; } = "movies";
+
+    /// <summary>Gets or sets the default tag for TV shows added with Search &amp; Add.</summary>
+    public string TvTag { get; set; } = "tv-shows";
+
+    /// <summary>Gets or sets how many titles one non-admin user may add per day (0 = no limit).</summary>
+    public int DailyLimitPerUser { get; set; } = 10;
+
+    /// <summary>Gets or sets a value indicating whether CAM/TS releases are shown (always sorted last).</summary>
+    public bool ShowCam { get; set; } = true;
+
+    /// <summary>Gets or sets a value indicating whether Torvia syncs right after an add.</summary>
+    public bool SyncTorvia { get; set; } = true;
+
+    /// <summary>Gets or sets a value indicating whether the add result includes a direct TorBox stream link.</summary>
+    public bool ReturnStreamLink { get; set; } = true;
+
+    /// <summary>Gets or sets a value indicating whether old Torvia Search settings were already brought over.</summary>
+    public bool SearchSettingsImported { get; set; }
 }
