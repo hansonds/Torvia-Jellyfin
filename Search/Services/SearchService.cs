@@ -18,6 +18,7 @@ public class SearchService
     private readonly TorrentioClient _torrentio;
     private readonly TorBoxApi _torbox;
     private readonly ITaskManager _tasks;
+    private readonly PhoenicxTorBox.Library.LibrarySync _sync;
     private readonly ILibraryManager _library;
     private readonly AddStore _store;
     private readonly ILogger<SearchService> _log;
@@ -26,8 +27,9 @@ public class SearchService
     private readonly SemaphoreSlim _addLock = new(1, 1);
 
     /// <summary>Initializes a new instance of the <see cref="SearchService"/> class.</summary>
-    public SearchService(TmdbClient tmdb, TorrentioClient torrentio, TorBoxApi torbox, ITaskManager tasks, ILibraryManager library, AddStore store, ILogger<SearchService> log)
+    public SearchService(TmdbClient tmdb, TorrentioClient torrentio, TorBoxApi torbox, ITaskManager tasks, ILibraryManager library, AddStore store, PhoenicxTorBox.Library.LibrarySync sync, ILogger<SearchService> log)
     {
+        _sync = sync;
         _tmdb = tmdb;
         _torrentio = torrentio;
         _torbox = torbox;
@@ -357,10 +359,8 @@ public class SearchService
                 }
             }
 
-            if (cfg.SyncTorvia)
-            {
-                result.SyncStarted = StartTorviaSync();
-            }
+            // Always bring it into Jellyfin right away.
+            result.SyncStarted = StartTorviaSync();
 
             result.Message = (result.AlreadyInTorBox ? "Already in TorBox" : "Added to TorBox")
                 + $" with tag “{tag}”."
@@ -469,21 +469,32 @@ public class SearchService
         }
     }
 
-    /// <summary>Queues Torvia's "Sync TorBox library" task. False if Torvia isn't installed.</summary>
+    /// <summary>
+    /// Runs Torvia's sync straight away in the background (Search is part of Torvia now, so no task
+    /// queue in between). If a sync is already running, this one runs right after it, so the
+    /// new title is always picked up.
+    /// </summary>
     public bool StartTorviaSync()
     {
-        var worker = _tasks.ScheduledTasks.FirstOrDefault(t => t.ScheduledTask.Key == TorviaSyncKey);
-        if (worker == null)
+        _ = Task.Run(async () =>
         {
-            return false;
-        }
-
-        _tasks.QueueScheduledTask(worker.ScheduledTask, new TaskOptions());
+            try
+            {
+                // Give TorBox a moment to list the new download.
+                await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                var s = await _sync.RunAsync(null, CancellationToken.None).ConfigureAwait(false);
+                _log.LogInformation("Torvia Search: sync after add/remove done: {Message}", s.Message);
+            }
+            catch (Exception ex)
+            {
+                _log.LogWarning(ex, "Torvia Search: sync after add/remove failed");
+            }
+        });
         return true;
     }
 
     /// <summary>Gets whether Torvia is installed.</summary>
-    public bool TorviaInstalled => _tasks.ScheduledTasks.Any(t => t.ScheduledTask.Key == TorviaSyncKey);
+    public bool TorviaInstalled => true;
 
     /// <summary>The tags users may pick.</summary>
     public static List<string> TagList()

@@ -114,7 +114,6 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
                 c.DailyLimitPerUser = int.TryParse(S("DailyLimitPerUser"), out var lim) ? lim : c.DailyLimitPerUser;
                 c.AllowAllUsers = B("AllowAllUsers") ?? c.AllowAllUsers;
                 c.ShowCam = B("ShowCam") ?? c.ShowCam;
-                c.SyncTorvia = B("SyncTorvia") ?? c.SyncTorvia;
                 c.ReturnStreamLink = B("ReturnStreamLink") ?? c.ReturnStreamLink;
                 var users = r.Element("AllowedUserIds")?.Elements().Select(e => e.Value.Trim()).Where(v => v.Length > 0).ToArray();
                 if (users is { Length: > 0 })

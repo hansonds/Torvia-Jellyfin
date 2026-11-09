@@ -120,10 +120,6 @@
 
                 <h3 class="sectionTitle">Options</h3>
                 <div class="checkboxContainer checkboxContainer-withDescription">
-                    <label><input is="emby-checkbox" type="checkbox" id="SyncTorvia" /><span>Sync Torvia after each add</span></label>
-                    <div class="fieldDescription checkboxFieldDescription">Starts Torvia's "Sync TorBox library" task so the title shows up in Jellyfin right away.</div>
-                </div>
-                <div class="checkboxContainer checkboxContainer-withDescription">
                     <label><input is="emby-checkbox" type="checkbox" id="ReturnStreamLink" /><span>Give a direct stream link after adding</span></label>
                     <div class="fieldDescription checkboxFieldDescription">The app can offer "Play now" before Jellyfin has the title.</div>
                 </div>
@@ -272,7 +268,7 @@
             var pluginId = 'd793e3f9-364f-4640-9ebb-7c807bfcb90e';
             var page = document.querySelector('#PhoenicxTorBoxPage');
             var fields = ['TmdbApiKey', 'TorrentioUrl', 'Tags', 'MovieTag', 'TvTag', 'DailyLimitPerUser'];
-            var checks = ['AllowAllUsers', 'SyncTorvia', 'ReturnStreamLink', 'ShowCam'];
+            var checks = ['AllowAllUsers', 'ReturnStreamLink', 'ShowCam'];
             var publicUrl = ''; // "Public server address" from the Torvia tab
 
             function esc(s) {

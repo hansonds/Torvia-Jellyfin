@@ -199,7 +199,6 @@ be read.
 | User list | Tick the users who may use it (admins always can). | — |
 | Adds per user per day | Daily limit for non-admins (0 = no limit). | 10 |
 | Tags / default movie tag / default TV tag | Tags users can pick when adding — use the same tags as your Torvia tag folders. | `movies,tv-shows` |
-| Sync Torvia after each add | New titles appear in Jellyfin right away. | on |
 | Give a direct stream link after adding | Apps can offer *Play now* before Jellyfin has the title. | on |
 | Show CAM/TS releases | Marked ⚠️ and listed last. | on |
 
