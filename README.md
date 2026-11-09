@@ -88,7 +88,7 @@ even on a small server.
   it's added to your TorBox instantly, with the tag you choose (e.g. `movies`, `tv-shows`).
   Whole seasons or single episodes for series. CAM/TS releases marked ⚠️ and listed last (or hidden).
 - 🔄 **Straight into Jellyfin** — Torvia syncs right after the add, so the title appears in the
-  library within moments; optionally a *Play now* link before that.
+  library within moments.
 - 🌐 **Web page for your users** — `https://your-server/TorviaSearch/Web`, works in any browser:
   - signs in with the Jellyfin account (or reuses the Jellyfin sign-in already in that browser);
   - shows **who is signed in** (and admin), how many adds are left today, and a **Sign out** link
@@ -199,7 +199,7 @@ be read.
 | User list | Tick the users who may use it (admins always can). | — |
 | Adds per user per day | Daily limit for non-admins (0 = no limit). | 10 |
 | Tags / default movie tag / default TV tag | Tags users can pick when adding — use the same tags as your Torvia tag folders. | `movies,tv-shows` |
-| Give a direct stream link after adding | Apps can offer *Play now* before Jellyfin has the title. | on |
+| Give a direct stream link after adding | For apps using the API (e.g. PHOENIXA): they can offer *Play now* before Jellyfin has the title. The web page doesn't show it. | on |
 | Show CAM/TS releases | Marked ⚠️ and listed last. | on |
 
 The tab also shows whether Search is ready, the web page link, and the recent adds.
