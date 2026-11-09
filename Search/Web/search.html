@@ -532,27 +532,13 @@
     call('POST', 'TorviaSearch/Add', { hash: btn.getAttribute('data-h'), tag: document.getElementById('tag').value }).then(function (r) {
       btn.textContent = 'Added ✓';
       if (r.remainingToday != null) status.remainingToday = r.remainingToday;
-      out.innerHTML = '<div class="msg ok">✅ ' + esc(r.message) +
-        (r.streamUrl ? '<br><a href="' + esc(r.streamUrl) + '" target="_blank" rel="noopener">▶ Play now (direct TorBox link)</a>' : '') +
-        '<div id="jf" style="margin-top:.4rem;color:var(--mute)">' + (r.syncStarted ? '<span class="spin"></span>Waiting for it to show up in Jellyfin…' : '') + '</div></div>';
+      out.innerHTML = '<div class="msg ok">✅ ' + esc(r.message) + '</div>';
       out.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      if (r.syncStarted) poll(x, 0);
     }).catch(function (e) {
       btn.textContent = 'Add';
       Array.prototype.forEach.call(document.querySelectorAll('button[data-h]'), function (b) { b.disabled = false; });
       out.innerHTML = '<div class="msg err">' + esc((e.body && e.body.message) || e.message) + '</div>';
     });
-  }
-
-  function poll(x, n) {
-    var jf = document.getElementById('jf');
-    if (!jf) return;
-    if (n > 18) { jf.textContent = 'It will appear in Jellyfin after Torvia finishes syncing.'; return; }
-    setTimeout(function () {
-      call('GET', 'TorviaSearch/InLibrary/' + x.type + '/' + x.tmdbId).then(function (r) {
-        jf.innerHTML = '🎬 It\'s in Jellyfin now — <a href="' + base + '/web/#/details?id=' + esc(r.itemId) + '">open it</a>.';
-      }).catch(function () { poll(x, n + 1); });
-    }, 10000);
   }
 
   candidates = buildCandidates();
