@@ -51,6 +51,9 @@ even on a small server.
 - 🧹 **Clean names from messy releases** — removes site names (`www.Site.company - …`), quality
   tags and release junk; reads `S01E02`, `1x02`, season folders, years, and titles in any language
   (Tamil, Hindi, Chinese, …).
+- 🛡️ **Clean titles stay clean** — many releases hide a site name inside the video file
+  (`PSArips.com | Heart.of.the.Beast…`, `www.1TamilMV.style`) that Jellyfin may show instead of the
+  movie's name. Torvia puts the clean title back and locks it, so it can't be overwritten again.
 - ✏️ **Name fixes** — correct any title by hand: `text in the TorBox name = Title (Year)`.
 - 🎞️ **Versions** — the same movie in 2160p and 1080p shows as one movie with a version choice.
 - 💬 **Subtitles** — subtitles inside the video work as usual; separate subtitle files from the
@@ -68,21 +71,37 @@ even on a small server.
   instantly redirected to TorBox.
 - ⬇️ **Downloads for offline viewing** — the *Download* button in apps gives the real video from
   TorBox.
-- 🌍 **Nearest TorBox server for each viewer** — every viewer streams from the TorBox server
-  closest to them, wherever they are (friends abroad included).
-- 📊 **Bandwidth saved counter** — the plugin page shows the server traffic avoided: what would
-  have come in from TorBox **plus** what would have gone out to the apps (all time and this month).
+- 🌍 **Nearest TorBox server for each viewer** — TorBox picks its server by who asks for the link.
+  Torvia passes the viewer's own internet address along, so everyone streams from the TorBox
+  server closest to *them* (e.g. Europe for a friend in Germany, India for you), not closest to
+  your server. Works behind Cloudflare and reverse proxies; set TorBox's own CDN setting to *Auto*.
+- 📊 **Bandwidth saved counter** — the plugin page shows the server traffic avoided, with the
+  calculation: *TorBox → server* (download) **+** *server → apps* (upload) = total. All time and
+  this month, plus plays and hours watched. Counts TorBox items played directly (estimate: time
+  watched × the file's bitrate).
 - 🛟 **Safe fallback** — if TorBox doesn't give a link at that moment, Jellyfin plays it the normal
   way instead of failing.
 
 ### 🔎 Torvia Search (Search & Add)
-- Users you choose can **search any movie or TV show** (by name, TMDB or IMDb link), pick a release
-  that is **already cached on TorBox**, and add it to your TorBox with a tag — Torvia then syncs it
-  straight into Jellyfin.
-- Used by PHOENIXA's **Search & Add** button, and as a web page at `/TorviaSearch/Web`.
-- Per-user access list, daily limit per user, tag choice, "My adds / All adds" list.
-- Settings on the **Torvia Search** tab of the plugin page (TMDB key, Torrentio address, users,
-  tags). The TorBox key is shared with Torvia. API details: [SEARCH-API.md](SEARCH-API.md).
+- 🔍 **Search any movie or TV show** — by name, TMDB number or link, IMDb id (`tt…`) or link.
+- ⚡ **Only releases TorBox already has cached** — pick one (quality, size, HDR, audio shown) and
+  it's added to your TorBox instantly, with the tag you choose (e.g. `movies`, `tv-shows`).
+  Whole seasons or single episodes for series. CAM/TS releases marked ⚠️ and listed last (or hidden).
+- 🔄 **Straight into Jellyfin** — Torvia syncs right after the add, so the title appears in the
+  library within moments; optionally a *Play now* link before that.
+- 🌐 **Web page for your users** — `https://your-server/TorviaSearch/Web`, works in any browser:
+  - signs in with the Jellyfin account (or reuses the Jellyfin sign-in already in that browser);
+  - shows **who is signed in** (and admin), how many adds are left today, and a **Sign out** link
+    (signing out here doesn't sign you out of the Jellyfin app);
+  - **My adds** (each user's own list, removable) / **All adds** for admins.
+- 👥 **You decide who can use it** — every user, or only the users you tick; admins always can.
+  **Daily limit** per user (admins unlimited).
+- 📱 **Apps can use it too** — e.g. PHOENIXA's *Search & Add* button. API: [SEARCH-API.md](SEARCH-API.md).
+- ⚙️ **Own settings tab** — *Torvia Search* tab on the plugin page: TMDB API key, Torrentio address,
+  users, daily limit, tags, options. The **TorBox key is shared** with the Torvia tab, and the web
+  page link uses the **Public server address** from the Torvia tab when it's set.
+- ♻️ **Moving from the old separate "Torvia Search" plugin?** Its settings are copied over
+  automatically on first start. Install Torvia, restart, then uninstall the old plugin.
 
 ### Safe and private
 - 🔒 **Your TorBox API key never leaves the server.** Apps only get short-lived TorBox links.
@@ -150,11 +169,27 @@ a restart. To update now: **Catalog → Torvia → pick the newest version → I
 | Nearest TorBox server for each viewer | Each viewer gets the TorBox server closest to them. | on |
 | Separate folder for each TorBox tag | One library per tag. | on |
 | Include usenet / web downloads | Also list those downloads. | on |
-| *Torvia Search tab:* TMDB API key, Torrentio address, allowed users, daily limit, tags, options | Search & Add settings. | off until a TMDB key is set |
 | Name fixes | Fix titles that come out wrong, one per line: `Kaithi.2019 = Kaithi (2019)` | empty |
 
-The page also shows the last sync result: movies, series, episodes, subtitles, tag folders, and any
-file names that couldn't be read.
+The page also shows the **bandwidth saved** counter and the last sync result: movies, series,
+episodes, subtitles, tag folders, libraries scanned, titles fixed, and any file names that couldn't
+be read.
+
+### Torvia Search tab
+
+| Setting | What it does | Default |
+|---|---|---|
+| **TMDB API key** | Needed for searching (themoviedb.org → Settings → API; v3 key or v4 token). | — |
+| Torrentio address | Where cached releases are looked up; a configured Torrentio link works too. | `https://torrentio.strem.fun` |
+| Every user on this server | Let all users use Search & Add. | off |
+| User list | Tick the users who may use it (admins always can). | — |
+| Adds per user per day | Daily limit for non-admins (0 = no limit). | 10 |
+| Tags / default movie tag / default TV tag | Tags users can pick when adding — use the same tags as your Torvia tag folders. | `movies,tv-shows` |
+| Sync Torvia after each add | New titles appear in Jellyfin right away. | on |
+| Give a direct stream link after adding | Apps can offer *Play now* before Jellyfin has the title. | on |
+| Show CAM/TS releases | Marked ⚠️ and listed last. | on |
+
+The tab also shows whether Search is ready, the web page link, and the recent adds.
 
 ### Start a sync from a script or bot
 Create an API key in **Dashboard → API Keys**, then:
@@ -194,6 +229,11 @@ comes back as watched.
 **What if TorBox is down?**
 Browsing still works (everything is stored in Jellyfin); TorBox movies play again once TorBox is
 back. Your library is never emptied because of an outage.
+
+**A movie shows a website name as its title — why?**
+The release group wrote their site name into the video file's own title. Torvia fixes this
+automatically for TorBox movies (clean title from the folder, locked). For other libraries, untick
+*Prefer embedded titles over filenames* in the library settings and refresh its metadata.
 
 **How many movies can it handle?**
 No limit in the plugin — as many as your TorBox plan keeps. Each item is a ~100-byte file. The
