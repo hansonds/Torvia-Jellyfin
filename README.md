@@ -117,7 +117,8 @@ even on a small server.
 
 ## 📦 Installation
 
-**You need:** Jellyfin **12.x** and a **TorBox** account with its API key.
+**You need:** Jellyfin **12.x** and a **TorBox** account with its API key. For Torvia Search, also a
+free **TMDB API key**.
 
 ### 1. Add the repository
 Jellyfin **Dashboard → Plugins → Repositories → +**
@@ -150,6 +151,19 @@ That's it. Jellyfin scans the libraries and your TorBox movies appear with poste
 
 > **Docker:** the folders are inside Jellyfin's own `/config` folder, so nothing in your Docker
 > setup has to change.
+
+### 5. Turn on Torvia Search (optional)
+For **Search & Add** (search any movie or show and add it to TorBox):
+1. Get a free **TMDB API key**: create an account at [themoviedb.org](https://www.themoviedb.org),
+   then **Settings → API** → request a key. The *API Key* (v3) or the *API Read Access Token* (v4)
+   both work.
+2. **Dashboard → Torvia → Torvia Search** tab → paste it into **TMDB API key**.
+3. Choose **who can use it** (every user, or tick users — admins always can), the **daily limit**,
+   and the **tags** to offer (use the same tags as your Torvia tag folders, e.g. `movies,tv-shows`).
+4. Click **Save**. The status box should say **✅ Ready** and shows the web page link
+   (`https://your-server/TorviaSearch/Web`) to give to your users.
+
+The TorBox key is taken from the Torvia tab — no need to enter it again.
 
 ### Updating
 New versions install themselves overnight (Jellyfin's *Update Plugins* task) and take effect after
