@@ -108,7 +108,7 @@
   <div class="who" id="who"></div>
 </header>
 <main id="app"></main>
-<footer>Torvia Search · <a href="https://phoenicx.org" target="_blank" rel="noopener">phoenicx.org</a></footer>
+<footer>Torvia · Search and Add · <a href="https://phoenicx.org" target="_blank" rel="noopener">phoenicx.org</a></footer>
 
 <script>
 (function () {
@@ -181,7 +181,8 @@
       servers.forEach(function (sv) { list.push({ token: sv.AccessToken, userId: sv.UserId, fromJellyfin: true }); });
     } catch (e) {}
     var seen = {};
-    return list.filter(function (x) { if (seen[x.token]) return false; seen[x.token] = 1; return true; });
+    var skip = skipped();
+    return list.filter(function (x) { if (seen[x.token] || skip.indexOf(x.token) >= 0) return false; seen[x.token] = 1; return true; });
   }
 
   function useNext(reason) {
@@ -189,7 +190,22 @@
     if (auth) start(); else showLogin(reason);
   }
 
-  function signOut() { store.del('ts_auth'); auth = null; candidates = []; showLogin(); }
+  function skipped() { try { return JSON.parse(store.get('ts_skip') || '[]'); } catch (e) { return []; } }
+
+  // Sign out of this page. A session this page made itself is ended on the server; a session
+  // borrowed from the Jellyfin app (or handed over by PHOENIXA) is only no longer used here,
+  // so the Jellyfin app itself stays signed in.
+  function signOut() {
+    if (auth && auth.token) {
+      if (!auth.fromJellyfin && !auth.fromApp) {
+        fetch(base + '/Sessions/Logout', { method: 'POST', headers: { 'Authorization': header(auth.token) } }).catch(function () {});
+      }
+      var skip = skipped(); skip.push(auth.token); store.set('ts_skip', JSON.stringify(skip.slice(-20)));
+    }
+    store.del('ts_auth'); auth = null; candidates = [];
+    document.getElementById('tabs').hidden = true;
+    showLogin();
+  }
 
   function sessionEnded() {
     // The token was refused: forget it if it was ours, then try the next one or ask to sign in.
@@ -219,9 +235,12 @@
     app.innerHTML = loading('Checking your access…');
     call('GET', 'TorviaSearch/Status').then(function (s) {
       status = s;
-      document.getElementById('who').innerHTML = (auth.name ? esc(auth.name) + ' · ' : '') +
-        (s.remainingToday == null ? 'no daily limit' : s.remainingToday + ' adds left today') +
-        (auth.fromJellyfin || auth.fromApp ? '' : ' · <a href="#" id="so" style="color:inherit">Sign out</a>');
+      var who = s.userName || auth.name || '';
+      if (who) auth.name = who;
+      document.getElementById('who').innerHTML =
+        (who ? 'Signed in as <b style="color:var(--text)">' + esc(who) + '</b>' + (s.isAdmin ? ' <span style="opacity:.7">(admin)</span>' : '') + ' · ' : '') +
+        (s.isAdmin || !s.dailyLimit ? 'no daily limit' : s.remainingToday + ' adds left today') +
+        ' · <a href="#" id="so" style="color:inherit;text-decoration:underline">Sign out</a>';
       var so = document.getElementById('so'); if (so) so.onclick = function (e) { e.preventDefault(); signOut(); };
       if (!s.allowed) { app.innerHTML = '<div class="msg err">Search &amp; Add isn\'t turned on for your account. Ask the server owner.</div>'; return; }
       if (!s.ready) { app.innerHTML = '<div class="msg err">Search &amp; Add isn\'t set up yet (API keys missing in the plugin settings).</div>'; return; }

@@ -47,6 +47,7 @@ public class SearchController : ControllerBase
         return J(new
         {
             installed = true,
+            userName = id == Guid.Empty ? null : _users.GetUserById(id)?.Username,
             version = typeof(Plugin).Assembly.GetName().Version?.ToString(),
             allowed,
             ready,
