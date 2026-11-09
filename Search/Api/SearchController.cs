@@ -356,7 +356,9 @@ public class SearchController : ControllerBase
         catch (Exception ex)
         {
             _log.LogWarning("Torvia Search: {Msg}", ex.Message);
-            return J(new { error = ex.Message }, 502);
+            // 4xx, not 5xx: Jellyfin (or a proxy in front) replaces 5xx answers with a generic text,
+            // and the real reason would be lost.
+            return J(new { error = ex.Message, message = ex.Message }, 409);
         }
     }
 }

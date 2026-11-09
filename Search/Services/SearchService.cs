@@ -435,7 +435,17 @@ public class SearchService
                 return (200, $"Removed “{rec.Name}” from your list. Someone else added it too, so it stays in TorBox.", false);
             }
 
-            await _torbox.DeleteAsync(rec.TorrentId, ct).ConfigureAwait(false);
+            // Already deleted on TorBox directly? TorBox then answers with an error — that's fine,
+            // the check below tells whether it's gone.
+            string? deleteError = null;
+            try
+            {
+                await _torbox.DeleteAsync(rec.TorrentId, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                deleteError = ex.Message;
+            }
 
             // Check TorBox really let it go (wait a moment if it's slow).
             var stillThere = await _torbox.ExistsAsync(rec.TorrentId, ct).ConfigureAwait(false);
@@ -448,7 +458,7 @@ public class SearchService
             if (stillThere)
             {
                 _log.LogWarning("Torvia Search: TorBox did not delete torrent {Id} ({Name})", rec.TorrentId, rec.Name);
-                return (502, $"TorBox didn't delete “{rec.Name}”. Try again in a minute.", false);
+                return (409, $"TorBox didn't delete “{rec.Name}”" + (deleteError is null ? "." : $" ({deleteError}).") + " Try again in a minute.", false);
             }
 
             // Forget every list entry for this download (all users).
@@ -460,8 +470,8 @@ public class SearchService
             // Always sync, so it leaves Jellyfin right away.
             var synced = StartTorviaSync();
             _log.LogInformation("Torvia Search: removed {Name} from TorBox (torrent {Id}, added by {User})", rec.Name, rec.TorrentId, rec.UserName);
-            return (200, $"Deleted “{rec.Name}” from TorBox."
-                + (synced ? " Torvia is syncing — it will leave Jellyfin in a minute." : string.Empty), true);
+            return (200, (deleteError is null ? $"Deleted “{rec.Name}” from TorBox." : $"“{rec.Name}” was already gone from TorBox; removed from the list.")
+                + (synced ? " Torvia is syncing — it will leave Jellyfin in a minute." : string.Empty), deleteError is null);
         }
         finally
         {
