@@ -421,24 +421,47 @@ public class SearchService
         await _addLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (rec.AlreadyInTorBox)
+            // Normal users can't delete something the owner already had in TorBox, or that another
+            // user still wants: it only leaves their list. Admins always delete it from TorBox.
+            if (!isAdmin && rec.AlreadyInTorBox)
             {
                 _store.Remove(rec.Id);
-                return (200, $"Removed “{rec.Name}” from the list. It was already in TorBox before, so it was kept there.", false);
+                return (200, $"Removed “{rec.Name}” from your list. It was already in TorBox before, so it was kept there.", false);
             }
 
-            if (_store.OthersUsing(rec) > 0)
+            if (!isAdmin && _store.OthersUsing(rec) > 0)
             {
                 _store.Remove(rec.Id);
-                return (200, $"Removed “{rec.Name}” from the list. Someone else added it too, so it stays in TorBox.", false);
+                return (200, $"Removed “{rec.Name}” from your list. Someone else added it too, so it stays in TorBox.", false);
             }
 
-            var deleted = await _torbox.DeleteAsync(rec.TorrentId, ct).ConfigureAwait(false);
-            _store.Remove(rec.Id);
-            var synced = (Plugin.Instance?.Configuration.SyncTorvia ?? true) && StartTorviaSync();
-            _log.LogInformation("Torvia Search: removed {Name} (torrent {Id}, added by {User})", rec.Name, rec.TorrentId, rec.UserName);
-            return (200, (deleted ? $"Deleted “{rec.Name}” from TorBox." : $"“{rec.Name}” was no longer in TorBox; removed from the list.")
-                + (synced ? " It will leave Jellyfin after Torvia syncs." : string.Empty), deleted);
+            await _torbox.DeleteAsync(rec.TorrentId, ct).ConfigureAwait(false);
+
+            // Check TorBox really let it go (wait a moment if it's slow).
+            var stillThere = await _torbox.ExistsAsync(rec.TorrentId, ct).ConfigureAwait(false);
+            if (stillThere)
+            {
+                await Task.Delay(2000, ct).ConfigureAwait(false);
+                stillThere = await _torbox.ExistsAsync(rec.TorrentId, ct).ConfigureAwait(false);
+            }
+
+            if (stillThere)
+            {
+                _log.LogWarning("Torvia Search: TorBox did not delete torrent {Id} ({Name})", rec.TorrentId, rec.Name);
+                return (502, $"TorBox didn't delete “{rec.Name}”. Try again in a minute.", false);
+            }
+
+            // Forget every list entry for this download (all users).
+            foreach (var r in _store.All().Where(r => r.TorrentId == rec.TorrentId).ToList())
+            {
+                _store.Remove(r.Id);
+            }
+
+            // Always sync, so it leaves Jellyfin right away.
+            var synced = StartTorviaSync();
+            _log.LogInformation("Torvia Search: removed {Name} from TorBox (torrent {Id}, added by {User})", rec.Name, rec.TorrentId, rec.UserName);
+            return (200, $"Deleted “{rec.Name}” from TorBox."
+                + (synced ? " Torvia is syncing — it will leave Jellyfin in a minute." : string.Empty), true);
         }
         finally
         {

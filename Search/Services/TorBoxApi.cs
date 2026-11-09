@@ -137,6 +137,20 @@ public class TorBoxApi
         }
     }
 
+    /// <summary>Whether this torrent is still in the TorBox account.</summary>
+    public async Task<bool> ExistsAsync(long id, CancellationToken ct)
+    {
+        try
+        {
+            using var doc = await GetJsonAsync(Client(), $"{Base}/mylist?id={id}&bypass_cache=true", ct).ConfigureAwait(false);
+            return doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// Waits for the files to show up, picks the episode's file (or else the largest video) and returns a stream link.
     /// </summary>

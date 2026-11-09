@@ -319,6 +319,10 @@
     call('DELETE', 'TorviaSearch/Adds/' + encodeURIComponent(id)).then(function (r) {
       var card = document.getElementById('a_' + id);
       if (card) card.remove();
+      if (r.deletedFromTorBox) {
+        // An admin delete also clears other users' entries for the same download.
+        Array.prototype.forEach.call(document.querySelectorAll('[data-hash="' + (b.getAttribute('data-hash') || '-') + '"]'), function (c) { c.remove(); });
+      }
       msg.innerHTML = '<div class="msg ok">✅ ' + esc(r.message) + '</div>';
       if (status && status.remainingToday != null) {
         call('GET', 'TorviaSearch/Status').then(function (st) { status = st; });
