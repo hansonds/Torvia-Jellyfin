@@ -29,6 +29,9 @@ public sealed class StreamTotals
     /// <summary>Gets or sets the plays this month.</summary>
     public long MonthPlays { get; set; }
 
+    /// <summary>Gets or sets the watch time this month, in seconds.</summary>
+    public long MonthSeconds { get; set; }
+
     /// <summary>Gets or sets when counting started (UTC).</summary>
     public DateTime? SinceUtc { get; set; }
 }
@@ -81,6 +84,7 @@ public sealed class StreamStats : IHostedService
                     Month = t.Month,
                     MonthBytes = t.MonthBytes,
                     MonthPlays = t.MonthPlays,
+                    MonthSeconds = t.MonthSeconds,
                     SinceUtc = t.SinceUtc,
                 };
             }
@@ -171,6 +175,7 @@ public sealed class StreamStats : IHostedService
                     s.TotalBytes += bytes;
                     s.MonthBytes += bytes;
                     s.TotalSeconds += (long)seconds;
+                    s.MonthSeconds += (long)seconds;
                     Save(force: stopped);
                 }
             }
@@ -220,12 +225,14 @@ public sealed class StreamStats : IHostedService
 
     private static void RollMonth(StreamTotals s)
     {
-        var month = DateTime.UtcNow.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
+        // A new month (by the server's clock) starts again from zero.
+        var month = DateTime.Now.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
         if (s.Month != month)
         {
             s.Month = month;
             s.MonthBytes = 0;
             s.MonthPlays = 0;
+            s.MonthSeconds = 0;
         }
     }
 

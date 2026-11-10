@@ -75,9 +75,9 @@ even on a small server.
   Torvia passes the viewer's own internet address along, so everyone streams from the TorBox
   server closest to *them* (e.g. Europe for a friend in Germany, India for you), not closest to
   your server. Works behind Cloudflare and reverse proxies; set TorBox's own CDN setting to *Auto*.
-- 📊 **Bandwidth saved counter** — the plugin page shows the server traffic avoided, with the
-  calculation: *TorBox → server* (download) **+** *server → apps* (upload) = total. All time and
-  this month, plus plays and hours watched. Counts TorBox items played directly (estimate: time
+- 📊 **Bandwidth saved counter** — the plugin page shows the server traffic avoided this month,
+  with the calculation: *TorBox → server* (download) **+** *server → apps* (upload) = total, plus
+  plays and hours watched. Starts again from zero every month. Counts TorBox items played directly (estimate: time
   watched × the file's bitrate).
 - 🛟 **Safe fallback** — if TorBox doesn't give a link at that moment, Jellyfin plays it the normal
   way instead of failing.
