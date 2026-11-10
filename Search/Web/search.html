@@ -249,7 +249,7 @@
       showSearch('');
     }).catch(function (e) {
       if (e.status === 401) return; // already handled
-      if (e.status === 404) app.innerHTML = '<div class="msg err">The Torvia Search plugin isn\'t installed on this server.</div>';
+      if (e.status === 404) app.innerHTML = '<div class="msg err">Torvia isn\'t installed on this server (or is an old version).</div>';
       else if (e.status === 403) app.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>';
       else app.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>';
     });

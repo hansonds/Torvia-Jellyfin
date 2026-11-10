@@ -128,14 +128,14 @@ public class AddStore
         }
     }
 
-    /// <summary>How many new titles this user added today (server's local day); "already in TorBox" adds don't count.</summary>
+    /// <summary>How many new titles this user added today (in the time zone set on the Torvia tab); "already in TorBox" adds don't count.</summary>
     public int CountToday(Guid userId)
     {
         var uid = userId.ToString("N");
-        var today = DateTime.Now.Date;
+        var today = Plugin.LocalNow().Date;
         lock (_lock)
         {
-            return Load().Count(r => r.UserId == uid && !r.AlreadyInTorBox && r.When.ToLocalTime() >= today);
+            return Load().Count(r => r.UserId == uid && !r.AlreadyInTorBox && Plugin.ToLocal(r.When) >= today);
         }
     }
 

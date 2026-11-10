@@ -580,9 +580,12 @@ public sealed class LibrarySync
             {
                 var m = t.GetMethods().FirstOrDefault(x => x.Name == name && x.GetParameters().All(p => p.IsOptional));
                 var args = m?.GetParameters().Select(p => p.ParameterType == typeof(bool) ? (object?)false : p.DefaultValue).ToArray();
-                if (m?.Invoke(_host, args) is string u && u.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                if (m?.Invoke(_host, args) is string u && Uri.TryCreate(u, UriKind.Absolute, out var uri))
                 {
-                    return u.TrimEnd('/');
+                    // Keep port and base URL, but always talk to the server itself (127.0.0.1):
+                    // a network address (e.g. 10.0.0.176) can change when the container is recreated.
+                    var path = uri.AbsolutePath.TrimEnd('/');
+                    return $"http://127.0.0.1:{uri.Port}{path}";
                 }
             }
 

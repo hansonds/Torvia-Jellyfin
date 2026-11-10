@@ -130,4 +130,39 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             // Old settings unreadable: start with the defaults.
         }
     }
+
+    /// <summary>
+    /// "Now" in the time zone set on the Torvia tab (or the server's clock when none is set).
+    /// Accepts names like Asia/Kolkata, or an offset like +05:30.
+    /// </summary>
+    public static DateTime LocalNow() => ToLocal(DateTime.UtcNow);
+
+    /// <summary>Converts a UTC time to the time zone set on the Torvia tab.</summary>
+    public static DateTime ToLocal(DateTime utc)
+    {
+        if (utc.Kind == DateTimeKind.Local)
+        {
+            utc = utc.ToUniversalTime();
+        }
+
+        var tz = Instance?.Configuration.TimeZone?.Trim();
+        if (string.IsNullOrEmpty(tz))
+        {
+            return DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime();
+        }
+
+        if (TimeZoneInfo.TryFindSystemTimeZoneById(tz, out var zone))
+        {
+            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Unspecified), zone);
+        }
+
+        var m = System.Text.RegularExpressions.Regex.Match(tz, @"^(?:UTC|GMT)?\s*([+-])(\d{1,2})(?::?(\d{2}))?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (m.Success)
+        {
+            var offset = new TimeSpan(int.Parse(m.Groups[2].Value), m.Groups[3].Success ? int.Parse(m.Groups[3].Value) : 0, 0);
+            return DateTime.SpecifyKind(utc + (m.Groups[1].Value == "-" ? -offset : offset), DateTimeKind.Unspecified);
+        }
+
+        return DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime();
+    }
 }

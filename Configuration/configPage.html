@@ -32,6 +32,10 @@
                     <div class="fieldDescription">Leave empty: each app gets the address it used to connect. Only fill it in if TorBox videos don't start behind your reverse proxy (e.g. https://jellyfin.example.com).</div>
                 </div>
                 <div class="inputContainer">
+                    <input is="emby-input" type="text" id="TimeZone" label="Your time zone" />
+                    <div class="fieldDescription">For the Search daily limit ("today") and the monthly bandwidth counter. E.g. <code>Asia/Kolkata</code> or <code>+05:30</code>. Empty = the server's clock (often UTC in Docker). <a href="#" id="tzMine" class="button-link">Use my time zone</a></div>
+                </div>
+                <div class="inputContainer">
                     <input is="emby-input" type="text" id="LibraryPath" label="Library folder (optional)" />
                     <div class="fieldDescription">Leave empty to use the default folder shown above.</div>
                 </div>
@@ -147,7 +151,7 @@
         (function () {
             var pluginId = 'd793e3f9-364f-4640-9ebb-7c807bfcb90e';
             var page = document.querySelector('#PhoenicxTorBoxPage');
-            var fields = ['TorBoxApiKey', 'PublicServerUrl', 'LibraryPath', 'NameFixes'];
+            var fields = ['TorBoxApiKey', 'PublicServerUrl', 'TimeZone', 'LibraryPath', 'NameFixes'];
             var checks = ['DirectToClients', 'NearestServerPerViewer', 'FoldersByTag', 'IncludeUsenet', 'IncludeWebDownloads'];
 
             function esc(s) {
@@ -248,6 +252,11 @@
                     });
                 });
                 return false;
+            });
+
+            page.querySelector('#tzMine').addEventListener('click', function (e) {
+                e.preventDefault();
+                try { page.querySelector('#TimeZone').value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (x) { }
             });
 
             page.querySelector('#ptbTest').addEventListener('click', function () {

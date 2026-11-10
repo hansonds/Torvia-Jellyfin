@@ -33,6 +33,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public bool NearestServerPerViewer { get; set; } = true;
 
+    /// <summary>
+    /// Gets or sets your time zone (e.g. Asia/Kolkata), for "today" (Search daily limit) and the
+    /// monthly bandwidth counter. Empty = the server's clock (often UTC in Docker).
+    /// </summary>
+    public string TimeZone { get; set; } = string.Empty;
+
     /// <summary>Gets or sets a value indicating whether usenet downloads are included.</summary>
     public bool IncludeUsenet { get; set; } = true;
 

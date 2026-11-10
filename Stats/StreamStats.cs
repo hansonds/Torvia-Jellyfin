@@ -225,8 +225,8 @@ public sealed class StreamStats : IHostedService
 
     private static void RollMonth(StreamTotals s)
     {
-        // A new month (by the server's clock) starts again from zero.
-        var month = DateTime.Now.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
+        // A new month (in the time zone set on the Torvia tab) starts again from zero.
+        var month = PhoenicxTorBox.Plugin.LocalNow().ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture);
         if (s.Month != month)
         {
             s.Month = month;

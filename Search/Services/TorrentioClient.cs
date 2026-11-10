@@ -35,14 +35,42 @@ public class TorrentioClient
         var c = _http.CreateClient(NamedClient.Default);
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) TorviaSearch/1.0");
-        using var res = await c.SendAsync(req, ct).ConfigureAwait(false);
+        HttpResponseMessage res;
+        try
+        {
+            res = await c.SendAsync(req, ct).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new InvalidOperationException($"Torrentio can't be reached from this server ({ex.Message}). " + Blocked);
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new InvalidOperationException("Torrentio didn't answer in time. " + Blocked);
+        }
+
+        using var _ = res;
         if (!res.IsSuccessStatusCode)
         {
-            throw new HttpRequestException($"Torrentio answered {(int)res.StatusCode}");
+            var code = (int)res.StatusCode;
+            throw new InvalidOperationException(code is 403 or 429 or 503 or 520 or 521 or 522 or 525
+                ? $"Torrentio refused this server (answer {code}). " + Blocked
+                : $"Torrentio answered {code}. Try again in a minute.");
         }
 
         await using var stream = await res.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-        using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
+        JsonDocument doc;
+        try
+        {
+            doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
+        }
+        catch (JsonException)
+        {
+            // A web page instead of data: usually a block / "checking your browser" page.
+            throw new InvalidOperationException("Torrentio sent back a web page instead of results. " + Blocked);
+        }
+
+        using var __ = doc;
 
         var list = new List<(ReleaseInfo, string?)>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -100,6 +128,10 @@ public class TorrentioClient
 
         return list;
     }
+
+    private const string Blocked =
+        "Torrentio blocks many cloud / VPS servers. Run the server's traffic through a proxy (e.g. Cloudflare WARP) " +
+        "or enter a self-hosted Torrentio address on the Torvia Search tab.";
 
     private static string? Str(JsonElement e, string name) =>
         e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;

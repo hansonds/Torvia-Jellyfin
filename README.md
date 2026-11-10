@@ -100,6 +100,9 @@ even on a small server.
 - ⚙️ **Own settings tab** — *Torvia Search* tab on the plugin page: TMDB API key, Torrentio address,
   users, daily limit, tags, options. The **TorBox key is shared** with the Torvia tab, and the web
   page link uses the **Public server address** from the Torvia tab when it's set.
+- 🌐 **Torrentio note** — releases are looked up on Torrentio, which blocks many cloud / VPS
+  servers. If searches fail with "Torrentio refused this server", run the server's traffic through
+  a proxy (e.g. Cloudflare WARP) or use a self-hosted Torrentio address.
 - ♻️ **Moving from the old separate "Torvia Search" plugin?** Its settings are copied over
   automatically on first start. Install Torvia, restart, then uninstall the old plugin.
 
@@ -177,6 +180,7 @@ a restart. To update now: **Catalog → Torvia → pick the newest version → I
 |---|---|---|
 | **TorBox API key** | The only required setting. | — |
 | Public server address | Optional. Leave empty: each app gets the address it connected with. Only fill it in if TorBox videos don't start behind your reverse proxy. | empty (automatic) |
+| Your time zone | For the Search daily limit and the monthly bandwidth counter (e.g. `Asia/Kolkata`). | the server's clock |
 | Library folder | Where the library files go. | Jellyfin's data folder |
 | Sync interval | How often TorBox is checked. | every 3 hours |
 | Play straight from TorBox | Apps stream from TorBox directly. | on |
