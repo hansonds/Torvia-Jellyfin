@@ -128,14 +128,14 @@ public class AddStore
         }
     }
 
-    /// <summary>How many new titles this user added today (UTC); "already in TorBox" adds don't count.</summary>
+    /// <summary>How many new titles this user added today (server's local day); "already in TorBox" adds don't count.</summary>
     public int CountToday(Guid userId)
     {
         var uid = userId.ToString("N");
-        var today = DateTime.UtcNow.Date;
+        var today = DateTime.Now.Date;
         lock (_lock)
         {
-            return Load().Count(r => r.UserId == uid && !r.AlreadyInTorBox && r.When >= today);
+            return Load().Count(r => r.UserId == uid && !r.AlreadyInTorBox && r.When.ToLocalTime() >= today);
         }
     }
 
@@ -166,6 +166,15 @@ public class AddStore
         catch (Exception ex)
         {
             _log.LogWarning("Torvia Search: could not read {File}: {Msg}", FilePath, ex.Message);
+            try
+            {
+                // Keep the unreadable file, so the history isn't overwritten and lost.
+                File.Copy(FilePath, FilePath + $".broken-{DateTime.UtcNow:yyyyMMddHHmmss}", true);
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
         }
 
         _items = new();

@@ -81,17 +81,8 @@ public class SearchService
         }
 
         var want = PhoenicxTorBox.Library.NameParser.Normalize(t.Title);
-        var root = plugin.LibraryRoot;
-        foreach (var it in _library.GetItemList(new InternalItemsQuery
-                 {
-                     IncludeItemTypes = new[] { type == "tv" ? BaseItemKind.Series : BaseItemKind.Movie },
-                     Recursive = true,
-                 }))
+        foreach (var it in TorviaItems(type, plugin.LibraryRoot))
         {
-            if (it.Path is null || !it.Path.StartsWith(root, StringComparison.Ordinal))
-            {
-                continue;
-            }
 
             var sameName = PhoenicxTorBox.Library.NameParser.Normalize(it.Name ?? string.Empty) == want
                 || PhoenicxTorBox.Library.NameParser.Normalize(it.OriginalTitle ?? string.Empty) == want
@@ -107,6 +98,27 @@ public class SearchService
     }
 
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (string Title, int? Year)> _titles = new();
+
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (DateTime At, List<MediaBrowser.Controller.Entities.BaseItem> Items)> _torviaItems = new();
+
+    /// <summary>Torvia's TorBox movies or series, read once and reused for 30 seconds (the adds list asks for many titles at once).</summary>
+    private List<MediaBrowser.Controller.Entities.BaseItem> TorviaItems(string type, string root)
+    {
+        if (_torviaItems.TryGetValue(type, out var hit) && DateTime.UtcNow - hit.At < TimeSpan.FromSeconds(30))
+        {
+            return hit.Items;
+        }
+
+        var items = _library.GetItemList(new InternalItemsQuery
+            {
+                IncludeItemTypes = new[] { type == "tv" ? BaseItemKind.Series : BaseItemKind.Movie },
+                Recursive = true,
+            })
+            .Where(it => it.Path is not null && it.Path.StartsWith(root, StringComparison.Ordinal))
+            .ToList();
+        _torviaItems[type] = (DateTime.UtcNow, items);
+        return items;
+    }
 
     private void Remember(string type, int tmdbId, TitleDetails d)
     {
@@ -296,12 +308,6 @@ public class SearchService
             return new AddResult { Message = "This release list is old. Search again and pick it from the new list." };
         }
 
-        var left = Remaining(userId, isAdmin);
-        if (left == 0)
-        {
-            return new AddResult { Message = $"You've reached today's limit of {cfg.DailyLimitPerUser} adds. Try again tomorrow.", RemainingToday = 0 };
-        }
-
         var allowedTags = TagList();
         var tag = string.IsNullOrWhiteSpace(req.Tag) ? (p.Type == "tv" ? cfg.TvTag : cfg.MovieTag) : req.Tag.Trim();
         if (!allowedTags.Contains(tag, StringComparer.OrdinalIgnoreCase))
@@ -312,6 +318,11 @@ public class SearchService
         await _addLock.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            if (Remaining(userId, isAdmin) == 0)
+            {
+                return new AddResult { Message = $"You've reached today's limit of {cfg.DailyLimitPerUser} adds. Try again tomorrow.", RemainingToday = 0 };
+            }
+
             var result = new AddResult { Tag = tag };
 
             // Movies get their title as the name; TV keeps the release name so Torvia can read S01E05.
@@ -486,22 +497,31 @@ public class SearchService
     /// </summary>
     public bool StartTorviaSync()
     {
+        // Several adds in a row: one waiting sync covers them all (it reads TorBox when it starts).
+        if (Interlocked.CompareExchange(ref _syncWaiting, 1, 0) != 0)
+        {
+            return true;
+        }
+
         _ = Task.Run(async () =>
         {
             try
             {
                 // Give TorBox a moment to list the new download.
                 await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
-                var s = await _sync.RunAsync(null, CancellationToken.None).ConfigureAwait(false);
+                var s = await _sync.RunAsync(null, CancellationToken.None, () => Interlocked.Exchange(ref _syncWaiting, 0)).ConfigureAwait(false);
                 _log.LogInformation("Torvia Search: sync after add/remove done: {Message}", s.Message);
             }
             catch (Exception ex)
             {
+                Interlocked.Exchange(ref _syncWaiting, 0);
                 _log.LogWarning(ex, "Torvia Search: sync after add/remove failed");
             }
         });
         return true;
     }
+
+    private int _syncWaiting;
 
     /// <summary>Gets whether Torvia is installed.</summary>
     public bool TorviaInstalled => true;

@@ -112,11 +112,12 @@ public sealed class LibrarySync
     private static string StatusFile => Path.Combine(Plugin.Instance!.LibraryRoot, ".phoenicx-torbox-status.json");
 
     /// <summary>Reads TorBox and updates the .strm folders.</summary>
-    public async Task<SyncStatus> RunAsync(IProgress<double>? progress, CancellationToken ct)
+    public async Task<SyncStatus> RunAsync(IProgress<double>? progress, CancellationToken ct, Action? started = null)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
+            started?.Invoke();
             var status = await RunCoreAsync(progress, ct).ConfigureAwait(false);
             _status = status;
             SaveStatus(status);
