@@ -11,15 +11,6 @@ namespace PhoenicxTorBox.Stats;
 /// <summary>Saved totals for the "bandwidth saved" counter.</summary>
 public sealed class StreamTotals
 {
-    /// <summary>Gets or sets the estimated bytes streamed straight from TorBox, all time.</summary>
-    public long TotalBytes { get; set; }
-
-    /// <summary>Gets or sets the watch time from TorBox, all time, in seconds.</summary>
-    public long TotalSeconds { get; set; }
-
-    /// <summary>Gets or sets the number of plays.</summary>
-    public long Plays { get; set; }
-
     /// <summary>Gets or sets the current month ("2026-11").</summary>
     public string Month { get; set; } = string.Empty;
 
@@ -31,9 +22,6 @@ public sealed class StreamTotals
 
     /// <summary>Gets or sets the watch time this month, in seconds.</summary>
     public long MonthSeconds { get; set; }
-
-    /// <summary>Gets or sets when counting started (UTC).</summary>
-    public DateTime? SinceUtc { get; set; }
 }
 
 /// <summary>
@@ -78,14 +66,10 @@ public sealed class StreamStats : IHostedService
                 RollMonth(t);
                 return new StreamTotals
                 {
-                    TotalBytes = t.TotalBytes,
-                    TotalSeconds = t.TotalSeconds,
-                    Plays = t.Plays,
                     Month = t.Month,
                     MonthBytes = t.MonthBytes,
                     MonthPlays = t.MonthPlays,
                     MonthSeconds = t.MonthSeconds,
-                    SinceUtc = t.SinceUtc,
                 };
             }
         }
@@ -129,7 +113,6 @@ public sealed class StreamStats : IHostedService
             {
                 var s = Load();
                 RollMonth(s);
-                s.Plays++;
                 s.MonthPlays++;
                 Save(force: false);
             }
@@ -171,11 +154,13 @@ public sealed class StreamStats : IHostedService
                 {
                     var s = Load();
                     RollMonth(s);
-                    var bytes = (long)(seconds * t.BytesPerSecond);
-                    s.TotalBytes += bytes;
-                    s.MonthBytes += bytes;
-                    s.TotalSeconds += (long)seconds;
-                    s.MonthSeconds += (long)seconds;
+                    s.MonthBytes += (long)(seconds * t.BytesPerSecond);
+
+                    // Whole seconds are counted; the rest is carried to the next update.
+                    t.Carry += seconds;
+                    var whole = (long)t.Carry;
+                    t.Carry -= whole;
+                    s.MonthSeconds += whole;
                     Save(force: stopped);
                 }
             }
@@ -255,8 +240,7 @@ public sealed class StreamStats : IHostedService
             _log.LogDebug(ex, "Torvia: stats file unreadable, starting new");
         }
 
-        _totals ??= new StreamTotals { SinceUtc = DateTime.UtcNow };
-        _totals.SinceUtc ??= DateTime.UtcNow;
+        _totals ??= new StreamTotals();
         return _totals;
     }
 
@@ -288,5 +272,7 @@ public sealed class StreamStats : IHostedService
         public bool Paused { get; set; }
 
         public double BytesPerSecond { get; set; }
+
+        public double Carry { get; set; }
     }
 }

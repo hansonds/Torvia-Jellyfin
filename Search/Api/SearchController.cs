@@ -53,7 +53,7 @@ public class SearchController : ControllerBase
             ready,
             enabled = allowed && ready,
             isAdmin = admin,
-            torviaInstalled = _svc.TorviaInstalled,
+            torviaInstalled = true,
             tags = SearchService.TagList(),
             movieTag = cfg.MovieTag,
             tvTag = cfg.TvTag,

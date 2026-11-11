@@ -98,9 +98,6 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether CAM/TS releases are shown (always sorted last).</summary>
     public bool ShowCam { get; set; } = true;
 
-    /// <summary>Old setting, no longer used: Torvia always syncs right after an add or remove.</summary>
-    public bool SyncTorvia { get; set; } = true;
-
     /// <summary>Gets or sets a value indicating whether the add result includes a direct TorBox stream link.</summary>
     public bool ReturnStreamLink { get; set; } = true;
 

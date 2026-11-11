@@ -3,7 +3,6 @@ using Jellyfin.Data.Enums;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Entities;
-using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
 using Plugin = PhoenicxTorBox.Plugin;
 
@@ -17,7 +16,6 @@ public class SearchService
     private readonly TmdbClient _tmdb;
     private readonly TorrentioClient _torrentio;
     private readonly TorBoxApi _torbox;
-    private readonly ITaskManager _tasks;
     private readonly PhoenicxTorBox.Library.LibrarySync _sync;
     private readonly ILibraryManager _library;
     private readonly AddStore _store;
@@ -27,13 +25,12 @@ public class SearchService
     private readonly SemaphoreSlim _addLock = new(1, 1);
 
     /// <summary>Initializes a new instance of the <see cref="SearchService"/> class.</summary>
-    public SearchService(TmdbClient tmdb, TorrentioClient torrentio, TorBoxApi torbox, ITaskManager tasks, ILibraryManager library, AddStore store, PhoenicxTorBox.Library.LibrarySync sync, ILogger<SearchService> log)
+    public SearchService(TmdbClient tmdb, TorrentioClient torrentio, TorBoxApi torbox, ILibraryManager library, AddStore store, PhoenicxTorBox.Library.LibrarySync sync, ILogger<SearchService> log)
     {
         _sync = sync;
         _tmdb = tmdb;
         _torrentio = torrentio;
         _torbox = torbox;
-        _tasks = tasks;
         _library = library;
         _store = store;
         _log = log;
@@ -83,10 +80,9 @@ public class SearchService
         var want = PhoenicxTorBox.Library.NameParser.Normalize(t.Title);
         foreach (var it in TorviaItems(type, plugin.LibraryRoot))
         {
-
             var sameName = PhoenicxTorBox.Library.NameParser.Normalize(it.Name ?? string.Empty) == want
                 || PhoenicxTorBox.Library.NameParser.Normalize(it.OriginalTitle ?? string.Empty) == want
-                || PhoenicxTorBox.Library.NameParser.Normalize(System.IO.Path.GetFileName(it.Path.TrimEnd('/')).Split('(')[0]) == want;
+                || PhoenicxTorBox.Library.NameParser.Normalize(System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(it.Path)).Split('(')[0]) == want;
             var sameYear = t.Year is null || it.ProductionYear is null || Math.Abs(it.ProductionYear.Value - t.Year.Value) <= 1;
             if (sameName && sameYear)
             {
@@ -270,17 +266,10 @@ public class SearchService
         r.Kind = kind;
         r.IsSeasonPack = kind is "range" or "season" or "multiseason" or "complete" or "pack";
         r.Label = kind == "pack" ? "Pack" : kind == "unknown" ? string.Empty : TvParser.Label(name);
-        if (wholeSeason)
+        // A whole season has no single file to name.
+        if (!wholeSeason && r.IsSeasonPack)
         {
-            // the whole season is added; no single file to name
-        }
-        else if (r.IsSeasonPack && file.Kind == "episode")
-        {
-            r.PlaysLabel = $"S{season:00}E{(file.EpisodeFrom ?? episode):00}";
-        }
-        else if (r.IsSeasonPack && !wholeSeason)
-        {
-            r.PlaysLabel = $"S{season:00}E{episode:00}";
+            r.PlaysLabel = $"S{season:00}E{(file.Kind == "episode" ? file.EpisodeFrom ?? episode : episode):00}";
         }
 
         return true;
@@ -523,9 +512,6 @@ public class SearchService
 
     private int _syncWaiting;
 
-    /// <summary>Gets whether Torvia is installed.</summary>
-    public bool TorviaInstalled => true;
-
     /// <summary>The tags users may pick.</summary>
     public static List<string> TagList()
     {
@@ -541,5 +527,4 @@ public class SearchService
 
         return tags;
     }
-
 }

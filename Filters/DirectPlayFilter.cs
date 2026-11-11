@@ -80,6 +80,7 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
 
             return;
         }
+
         if (Plugin.Instance?.Configuration.DirectToClients != true || executed.Result is not ObjectResult { Value: { } value })
         {
             return;
@@ -225,7 +226,7 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
         }
 
         var link = item.ShortcutPath;
-        if (string.IsNullOrEmpty(link) && item.Path?.EndsWith(".strm", StringComparison.OrdinalIgnoreCase) == true && File.Exists(item.Path))
+        if (string.IsNullOrEmpty(link) && File.Exists(item.Path))
         {
             link = (await File.ReadAllTextAsync(item.Path).ConfigureAwait(false)).Trim();
         }
@@ -248,7 +249,6 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
             return false;
         }
     }
-
 
     private async Task PrepareAsync(MediaSourceInfo ms, bool freshLink, string publicBase, string? viewerIp, CancellationToken ct)
     {

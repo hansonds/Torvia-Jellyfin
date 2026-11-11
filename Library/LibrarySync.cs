@@ -82,7 +82,6 @@ public sealed class LibrarySync
     private static readonly char[] Invalid = { '<', '>', ':', '"', '/', '\\', '|', '?', '*' };
 
     private readonly TorBoxClient _torbox;
-    private readonly ILibraryMonitor _monitor;
     private readonly IServerApplicationHost _host;
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<LibrarySync> _log;
@@ -94,7 +93,6 @@ public sealed class LibrarySync
     /// </summary>
     public LibrarySync(
         TorBoxClient torbox,
-        ILibraryMonitor monitor,
         IServerApplicationHost host,
         ILibraryManager libraryManager,
         ILogger<LibrarySync> log)
@@ -102,7 +100,6 @@ public sealed class LibrarySync
         _libraryManager = libraryManager;
         _host = host;
         _torbox = torbox;
-        _monitor = monitor;
         _log = log;
     }
 
@@ -330,7 +327,6 @@ public sealed class LibrarySync
             .Where(p => TorBoxClient.SubtitleExt.Contains(Path.GetExtension(p).TrimStart('.')))
             .ToHashSet(StringComparer.Ordinal);
 
-        var changedFolders = new HashSet<string>(StringComparer.Ordinal);
         foreach (var (path, content) in desired)
         {
             ct.ThrowIfCancellationRequested();
@@ -345,8 +341,6 @@ public sealed class LibrarySync
             {
                 status.Added++;
             }
-
-            changedFolders.Add(TopFolder(plugin, path));
         }
 
         var toRemove = existing.Where(p => !desired.ContainsKey(p)).ToList();
@@ -395,7 +389,6 @@ public sealed class LibrarySync
             {
                 File.Delete(path);
                 status.Removed++;
-                changedFolders.Add(TopFolder(plugin, path));
                 RemoveEmptyDirs(Path.GetDirectoryName(path)!, plugin);
             }
             catch (IOException ex)
@@ -438,7 +431,7 @@ public sealed class LibrarySync
         // Remove subtitles whose movie / episode is gone (not while TorBox looked half empty).
         if (desired.Count > 0 && (toRemove.Count > 0 || desired.Count >= existing.Count / 2))
         {
-            foreach (var path in existingSubs.Where(p => !desiredSubs.ContainsKey(p)))
+            foreach (var path in existingSubs.Where(p => !desiredSubs.ContainsKey(p) && File.Exists(p)))
             {
                 try
                 {
@@ -463,7 +456,6 @@ public sealed class LibrarySync
 
         // Put clean titles back on TorBox movies whose name became a site name from the file.
         status.TitlesFixed = TitleGuard.Instance is { } guard ? await guard.SweepAsync(desired.Keys).ConfigureAwait(false) : 0;
-
 
         status.Ok = true;
         status.FinishedUtc = DateTime.UtcNow;
@@ -541,11 +533,11 @@ public sealed class LibrarySync
 
     private async Task ScanOurLibrariesAsync(Plugin plugin, SyncStatus status, CancellationToken ct)
     {
-        var root = Path.GetFullPath(plugin.LibraryRoot).TrimEnd('/') + "/";
+        var root = WithSlash(plugin.LibraryRoot);
         var found = 0;
         foreach (var vf in _libraryManager.GetVirtualFolders())
         {
-            var ours = vf.Locations?.Any(l => (Path.GetFullPath(l).TrimEnd('/') + "/").StartsWith(root, StringComparison.Ordinal)) == true;
+            var ours = vf.Locations?.Any(l => WithSlash(l).StartsWith(root, PathCompare)) == true;
             if (!ours || !Guid.TryParse(vf.ItemId, out var id) || _libraryManager.GetItemById(id) is not Folder folder)
             {
                 continue;
@@ -569,6 +561,12 @@ public sealed class LibrarySync
             _log.LogInformation("Torvia: no Jellyfin library uses {Root} yet - add the folders as libraries", root);
         }
     }
+
+    // Windows paths use "\" and ignore upper/lower case; Linux paths use "/" and don't.
+    private static readonly StringComparison PathCompare = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+    private static string WithSlash(string path) =>
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)) + Path.DirectorySeparatorChar;
 
     private string LocalUrl()
     {
@@ -662,36 +660,19 @@ public sealed class LibrarySync
         return s.Length > 120 ? s[..120].Trim() : s;
     }
 
-    private static string TopFolder(Plugin plugin, string filePath)
-    {
-        var tagRel = Path.GetRelativePath(plugin.TagsPath, filePath);
-        if (!tagRel.StartsWith("..", StringComparison.Ordinal))
-        {
-            var parts = tagRel.Split(Path.DirectorySeparatorChar);
-            return parts.Length > 2 ? Path.Combine(plugin.TagsPath, parts[0], parts[1]) : Path.Combine(plugin.TagsPath, parts[0]);
-        }
-
-        foreach (var root in new[] { plugin.MoviesPath, plugin.ShowsPath })
-        {
-            var rel = Path.GetRelativePath(root, filePath);
-            if (!rel.StartsWith("..", StringComparison.Ordinal))
-            {
-                var first = rel.Split(Path.DirectorySeparatorChar)[0];
-                return Path.Combine(root, first);
-            }
-        }
-
-        return Path.GetDirectoryName(filePath)!;
-    }
-
+    /// <summary>
+    /// Removes a title's folder once no video is left in it. Artwork or NFO files Jellyfin saved
+    /// next to the title go with it; the main folders themselves always stay.
+    /// </summary>
     private static void RemoveEmptyDirs(string dir, Plugin plugin)
     {
         var stop = new[] { plugin.MoviesPath, plugin.ShowsPath, plugin.TagsPath, plugin.LibraryRoot };
         var d = dir;
         while (!string.IsNullOrEmpty(d) && !stop.Contains(d, StringComparer.Ordinal) && Directory.Exists(d)
-               && !Directory.EnumerateFileSystemEntries(d).Any())
+               && WithSlash(d).StartsWith(WithSlash(plugin.LibraryRoot), PathCompare)
+               && !Directory.EnumerateFiles(d, "*.strm", SearchOption.AllDirectories).Any())
         {
-            Directory.Delete(d);
+            Directory.Delete(d, true);
             d = Path.GetDirectoryName(d);
         }
     }
