@@ -100,7 +100,6 @@
 </head>
 <body>
 <header>
-  <a id="backJf" href="#" hidden style="color:var(--mute);text-decoration:none;font-size:.9rem;border:1px solid var(--line);border-radius:999px;padding:.3rem .8rem">← Jellyfin</a>
   <h1><span>Torvia</span> · Search and Add</h1>
   <nav class="tabs" id="tabs" hidden>
     <button class="tab on" data-tab="search">Search</button>
@@ -114,11 +113,6 @@
 <script>
 (function () {
   var base = location.pathname.replace(/\/TorviaSearch\/Web\/?$/i, '');
-  if (/[?&]from=home\b/.test(location.search)) {
-    var bj = document.getElementById('backJf');
-    bj.href = base + '/web/';
-    bj.hidden = false;
-  }
   var app = document.getElementById('app');
   var auth = null;
   var status = null;

@@ -106,11 +106,6 @@ even on a small server.
   - shows **who is signed in** (and admin), how many adds are left today, and a **Sign out** link
     (signing out here doesn't sign you out of the Jellyfin app);
   - **My adds** (each user's own list, removable) / **All adds** for admins.
-- 🏠 **Search & Add button on the home screen** — a small 🔍 *Search & Add* button in the top bar
-  of Jellyfin's home screen (browser, Jellyfin Media Player, Android app), shown **only to users
-  allowed to use it**. It picks up your theme's colours and can be restyled in Custom CSS with
-  `.torvia-search-btn`. Turn it on or off on the *Search & Add* tab. Nothing in Jellyfin's files is
-  changed; the button script is added to the page as it's sent.
 - 👥 **You decide who can use it** — every user, or only the users you tick; admins always can.
   **Daily limit** per user (admins unlimited).
 - 📱 **Apps can use it too** — e.g. PHOENIXA's *Search & Add* button. API: [SEARCH-API.md](SEARCH-API.md).
@@ -222,7 +217,6 @@ be read.
 | Tags / default movie tag / default TV tag | Tags users can pick when adding — use the same tags as your Torvia tag folders. | `movies,tv-shows` |
 | Give a direct stream link after adding | For apps using the API (e.g. PHOENIXA): they can offer *Play now* before Jellyfin has the title. The web page doesn't show it. | on |
 | Show CAM/TS releases | Marked ⚠️ and listed last. | on |
-| Search & Add button on the home screen | 🔍 button in the top bar of the Jellyfin home screen, for allowed users only. Reload Jellyfin after changing it. | on |
 
 The tab also shows whether Search is ready, the web page link, and the recent adds.
 

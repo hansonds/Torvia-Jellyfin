@@ -1,6 +1,5 @@
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using PhoenicxTorBox.Filters;
@@ -32,8 +31,6 @@ public class ServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddHostedService(sp => sp.GetRequiredService<TitleGuard>());
         serviceCollection.AddSingleton<StreamStats>();
         serviceCollection.AddHostedService(sp => sp.GetRequiredService<StreamStats>());
-        // Adds the Search & Add button script to the Jellyfin web client's page.
-        serviceCollection.AddTransient<IStartupFilter, Web.WebScriptInjector>();
         serviceCollection.PostConfigure<MvcOptions>(o => o.Filters.AddService<DirectPlayFilter>());
     }
 }
