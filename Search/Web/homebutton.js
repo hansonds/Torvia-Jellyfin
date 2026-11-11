@@ -43,40 +43,79 @@
         head.insertBefore(st, head.firstChild);
     }
 
-    function api() { return window.ApiClient || (window.ConnectionManager && window.ConnectionManager.currentApiClient && window.ConnectionManager.currentApiClient()); }
+    function log(msg) { if (state.lastLog !== msg) { state.lastLog = msg; try { console.info('[Torvia] ' + msg); } catch (e) { } } }
 
-    function currentUser() {
-        var c = api();
-        try { return c && c.getCurrentUserId && c.getCurrentUserId(); } catch (e) { return null; }
+    function api() {
+        if (window.ApiClient) return window.ApiClient;
+        try { if (window.ServerConnections && window.ServerConnections.currentApiClient) return window.ServerConnections.currentApiClient(); } catch (e) { }
+        try { if (window.ConnectionManager && window.ConnectionManager.currentApiClient) return window.ConnectionManager.currentApiClient(); } catch (e) { }
+        return null;
     }
+
+    // The server's address as this page sees it (handles a base URL like /jellyfin).
+    function serverBase() {
+        return location.origin + location.pathname.replace(/\/web(\/.*)?$/i, '');
+    }
+
+    // Who is signed in: from the web client if it shares it, otherwise from its saved sign-in.
+    function auth() {
+        var c = api();
+        try {
+            var uid = c && c.getCurrentUserId && c.getCurrentUserId();
+            var tok = c && c.accessToken && c.accessToken();
+            if (uid && tok) return { userId: uid, token: tok };
+        } catch (e) { }
+        try {
+            var creds = JSON.parse(localStorage.getItem('jellyfin_credentials') || 'null');
+            var list = (creds && creds.Servers) || [];
+            var here = serverBase().toLowerCase();
+            var best = null;
+            list.forEach(function (sv) {
+                if (!sv.AccessToken || !sv.UserId) return;
+                var addr = String(sv.ManualAddress || sv.LocalAddress || sv.RemoteAddress || '').replace(/\/+$/, '').toLowerCase();
+                if (!best || addr === here) best = sv;
+            });
+            if (best) return { userId: best.UserId, token: best.AccessToken };
+        } catch (e) { }
+        return null;
+    }
+
+    function currentUser() { var a = auth(); return a && a.userId; }
+
+    function visible(el) { return !!el && !el.classList.contains('hide') && el.offsetParent !== null; }
 
     function onHome() {
         var h = (location.hash || '').toLowerCase();
         if (/^#!?\/?(home|home\.html)([?/]|$)/.test(h)) return true;
-        var page = document.querySelector('#indexPage:not(.hide), .homePage:not(.hide)');
-        return !!page && (h === '' || h === '#' || h === '#/');
+        if (/\/home(\.html)?$/i.test(location.pathname)) return true;
+        var pages = document.querySelectorAll('#indexPage, .homePage');
+        for (var i = 0; i < pages.length; i++) if (visible(pages[i])) return true;
+        return false;
     }
 
     function webUrl() {
-        var c = api();
-        var url = c && c.getUrl ? c.getUrl('TorviaSearch/Web') : location.pathname.replace(/\/web\/.*$/i, '') + '/TorviaSearch/Web';
+        var url = serverBase() + '/TorviaSearch/Web';
         return url + (url.indexOf('?') < 0 ? '?' : '&') + 'from=home';
     }
 
     function check() {
-        var c = api();
-        var uid = currentUser();
-        if (!uid || !c) { state.userId = null; state.show = false; return; }
-        if (uid === state.userId || state.checking) return;
+        var a = auth();
+        if (!a) { state.userId = null; state.show = false; log('not signed in yet'); return; }
+        if (a.userId === state.userId || state.checking) return;
         state.checking = true;
-        var req = c.getJSON ? c.getJSON(c.getUrl('TorviaSearch/Status'))
-            : c.ajax({ type: 'GET', url: c.getUrl('TorviaSearch/Status'), dataType: 'json' });
-        Promise.resolve(req).then(function (s) {
-            state.userId = uid;
+        fetch(serverBase() + '/TorviaSearch/Status', {
+            headers: { 'Authorization': 'MediaBrowser Client="Torvia", Device="Browser", DeviceId="torvia-home", Version="1.0", Token="' + a.token + '"' }
+        }).then(function (r) {
+            if (!r.ok) throw new Error('status ' + r.status);
+            return r.json();
+        }).then(function (s) {
+            state.userId = a.userId;
             state.show = !!(s && s.enabled && s.homeButton !== false);
-        }, function () {
-            state.userId = uid;
+            log(state.show ? 'button on for this user' : 'button off (allowed: ' + (s && s.allowed) + ', ready: ' + (s && s.ready) + ', switch: ' + (s && s.homeButton) + ')');
+        }, function (e) {
+            state.userId = a.userId;
             state.show = false;
+            log('could not check Search & Add: ' + (e && e.message));
         }).then(function () { state.checking = false; update(); });
     }
 
@@ -129,6 +168,7 @@
             if (btn) btn.hidden = true;
             return;
         }
+        log('showing the button');
         addStyle();
         if (!btn) btn = makeButton();
         btn.href = webUrl();
@@ -142,7 +182,14 @@
         timer = setTimeout(function () { timer = null; check(); update(); }, 200);
     }
 
+    // Type torviaButton() in the browser console to see what the button is doing.
+    window.torviaButton = function () {
+        return { signedIn: !!auth(), user: currentUser(), checkedUser: state.userId, allowed: state.show, onHome: onHome(),
+            topBarSearchIcon: !!findAnchor(), button: !!document.getElementById(BTN_ID), hash: location.hash };
+    };
+
     function start() {
+        log('home button script loaded');
         window.addEventListener('hashchange', soon);
         window.addEventListener('popstate', soon);
         document.addEventListener('viewshow', soon, true);
