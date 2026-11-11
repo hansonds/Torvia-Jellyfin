@@ -104,6 +104,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether the add result includes a direct TorBox stream link.</summary>
     public bool ReturnStreamLink { get; set; } = true;
 
+    /// <summary>
+    /// Gets or sets a value indicating whether a "Search &amp; Add" button is added to the top bar of the
+    /// Jellyfin web home screen (shown only to users who may use Search &amp; Add).
+    /// </summary>
+    public bool HomeButton { get; set; } = true;
+
     /// <summary>Gets or sets a value indicating whether old Torvia Search settings were already brought over.</summary>
     public bool SearchSettingsImported { get; set; }
 }

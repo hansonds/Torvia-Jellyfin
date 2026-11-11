@@ -60,6 +60,7 @@ public class SearchController : ControllerBase
             remainingToday = allowed ? _svc.Remaining(id, admin) : 0,
             dailyLimit = admin ? 0 : cfg.DailyLimitPerUser,
             buttonLabel = "Search & Add",
+            homeButton = cfg.HomeButton,
         });
     }
 
@@ -294,6 +295,22 @@ public class SearchController : ControllerBase
 
         using var reader = new StreamReader(s);
         return Content(reader.ReadToEnd(), "text/html; charset=utf-8");
+    }
+
+    /// <summary>The script that adds the Search &amp; Add button to the Jellyfin web home screen.</summary>
+    [HttpGet("HomeButton.js")]
+    [AllowAnonymous]
+    public ActionResult HomeButton()
+    {
+        using var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("TorviaSearch.Web.homebutton.js");
+        if (s == null)
+        {
+            return NotFound();
+        }
+
+        using var reader = new StreamReader(s);
+        Response.Headers.CacheControl = "no-cache";
+        return Content(reader.ReadToEnd(), "application/javascript; charset=utf-8");
     }
 
     private static readonly JsonSerializerOptions JsonOpts = new()

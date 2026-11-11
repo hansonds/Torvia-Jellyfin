@@ -297,7 +297,11 @@
 
                         <div class="tv-card">
                             <h3>⚙️ Options</h3>
-                            <div class="tv-sub">What users see in the results.</div>
+                            <div class="tv-sub">What allowed users see.</div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="HomeButton" /><span>🔍 Search &amp; Add button on the home screen</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">In the top bar of Jellyfin's home screen (browser, Jellyfin Media Player, Android app), only for allowed users. Restyle it in Custom CSS with <code>.torvia-search-btn</code>. Reload Jellyfin after changing.</div>
+                            </div>
                             <div class="checkboxContainer checkboxContainer-withDescription">
                                 <label><input is="emby-checkbox" type="checkbox" id="ShowCam" /><span>Show CAM/TS releases</span></label>
                                 <div class="fieldDescription checkboxFieldDescription">Marked ⚠️ and always listed last.</div>
@@ -493,7 +497,7 @@
             var pluginId = 'd793e3f9-364f-4640-9ebb-7c807bfcb90e';
             var page = document.querySelector('#PhoenicxTorBoxPage');
             var fields = ['TmdbApiKey', 'TorrentioUrl', 'Tags', 'MovieTag', 'TvTag', 'DailyLimitPerUser'];
-            var checks = ['AllowAllUsers', 'ReturnStreamLink', 'ShowCam'];
+            var checks = ['AllowAllUsers', 'ReturnStreamLink', 'ShowCam', 'HomeButton'];
             var publicUrl = '';
 
             function $(sel) { return page.querySelector(sel); }
