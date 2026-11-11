@@ -14,7 +14,8 @@ public static class NameParser
 {
     private const RegexOptions Ic = RegexOptions.IgnoreCase | RegexOptions.Compiled;
 
-    private static readonly Regex Ext = new(@"\.[A-Za-z0-9]{2,4}$", RegexOptions.Compiled);
+    // Only real file extensions: a name ending in ".2023" or ".S01" keeps its year / season.
+    private static readonly Regex Ext = new(@"\.(mkv|mp4|avi|m4v|mov|wmv|ts|m2ts|webm|mpg|mpeg|flv|vob|srt|ass|ssa|vtt|sub|smi|idx)$", Ic);
     private static readonly Regex SitePrefix = new(@"^\s*(www\.)?[A-Za-z0-9\-]+\.(com|org|net|in|ws|xyz|cc|me|to|se|li|pw|lol|fans|io|co|ms|bz|ink|day|life|fyi|win|vip|art|mx|zip|boo|dad|bike|cat|rs|sx|ph|tv|gs|ac|ltd|uk|re|lc|nz|at|am|company|mov|movie|movies|dev|site|online|club|top|pro|shop|store|app|live|cfd|sbs|hair|beauty|skin|quest|icu|cyou|homes|autos|motorcycles|yachts|mom|rodeo)\s*[-–_]+\s*", Ic);
     // Any site name starting with "www", whatever its ending: "www.5MovieRulz.company - ",
     // "www 1TamilMV ws - ", "www_site_xyz - ".
@@ -48,6 +49,16 @@ public static class NameParser
         @"(?<![A-Za-z0-9])(2160p|1080p|1080i|720p|576p|480p|4k|uhd|web[ ._\-]?dl|web[ ._\-]?rip|bluray|blu[ ._\-]ray|brrip|bdrip|bd[ ._\-]?rip|hdrip|dvdrip|dvdscr|hdtv|hdcam|camrip|predvd|x264|x265|h[ ._]?264|h[ ._]?265|hevc|remux|proper|repack|extended|unrated|directors[ ._]cut|imax|hdr10|hdr|dovi|10bit|8bit|amzn|dsnp|hmax|atvp|zee5|jhs|ddp?\d?[ ._]?\d?|aac|dts|truehd|atmos|esub|esubs|dual[ ._\-]audio|multi[ ._\-]audio|uncut|tamil|telugu|hindi|malayalam|kannada|eng|true)(?![A-Za-z0-9])",
         Ic);
 
+    // Release words that are also normal title words ("Based on a True Story"). Before a year they
+    // are part of the title; release names put them after it.
+    private static readonly Regex SoftJunk = new(@"^(true|proper|extended|unrated|uncut|imax)$", Ic);
+
+    // What may stand between a title's own number and the real year: "Blade.Runner.2049.2017".
+    private static readonly Regex YearGap = new(@"^[ ._\-()\[\]]+$", RegexOptions.Compiled);
+
+    // "1920x1080" is a picture size, not a year.
+    private static readonly Regex PixelSize = new(@"^\d{4}x\d{3,4}", Ic);
+
     private static readonly Regex SeasonWord = new(@"^(season|s)\s*\d*$", Ic);
     private static readonly Regex Resolution = new(@"(?<![A-Za-z0-9])(2160p|4k|uhd|1080p|720p|576p|480p)(?![A-Za-z0-9])", Ic);
 
@@ -69,7 +80,7 @@ public static class NameParser
             var ym = YearRx.Match(before);
             if (ym.Success && ym.Index > 0)
             {
-                title = Clean(name[..ym.Index]);
+                title = Clean(name[..ym.Index], true);
             }
 
             return new ParsedName(
@@ -80,14 +91,25 @@ public static class NameParser
         }
 
         // Movie: title before the year.
-        foreach (Match ym in YearRx.Matches(name))
+        var years = YearRx.Matches(name);
+        for (var i = 0; i < years.Count; i++)
         {
+            // Two year-like numbers in a row: the first belongs to the title ("Blade Runner 2049"),
+            // the second is the year.
+            while (i + 1 < years.Count
+                   && YearGap.IsMatch(name[(years[i].Index + years[i].Length)..years[i + 1].Index])
+                   && !PixelSize.IsMatch(name[years[i + 1].Index..]))
+            {
+                i++;
+            }
+
+            var ym = years[i];
             if (ym.Index == 0)
             {
                 continue;
             }
 
-            var title = Clean(name[..ym.Index]);
+            var title = Clean(name[..ym.Index], true);
             if (title.Length == 0)
             {
                 continue;
@@ -152,7 +174,7 @@ public static class NameParser
                     var ym = YearRx.Match(prepped[..m.Index]);
                     if (ym.Success && ym.Index > 0)
                     {
-                        showTitle = Clean(prepped[..ym.Index]);
+                        showTitle = Clean(prepped[..ym.Index], true);
                         showYear = int.Parse(ym.Groups[1].Value);
                     }
                 }
@@ -262,13 +284,16 @@ public static class NameParser
         return n;
     }
 
-    private static string Clean(string s)
+    private static string Clean(string s, bool beforeYear = false)
     {
         var t = s;
-        var j = Junk.Match(t);
-        if (j.Success && j.Index > 0)
+        foreach (Match j in Junk.Matches(t))
         {
-            t = t[..j.Index];
+            if (j.Index > 0 && !(beforeYear && SoftJunk.IsMatch(j.Value)))
+            {
+                t = t[..j.Index];
+                break;
+            }
         }
 
         t = Regex.Replace(t, "[._]", " ");

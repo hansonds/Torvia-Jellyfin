@@ -137,17 +137,49 @@ public class TorBoxApi
         }
     }
 
-    /// <summary>Whether this torrent is still in the TorBox account.</summary>
-    public async Task<bool> ExistsAsync(long id, CancellationToken ct)
+    /// <summary>
+    /// Whether this torrent is still in the TorBox account. Null when TorBox can't say right now
+    /// (not reachable, busy, or an error on its side), which is not the same as "gone".
+    /// </summary>
+    public async Task<bool?> ExistsAsync(long id, CancellationToken ct)
     {
         try
         {
-            using var doc = await GetJsonAsync(Client(), $"{Base}/mylist?id={id}&bypass_cache=true", ct).ConfigureAwait(false);
-            return doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object;
+            using var res = await Client().GetAsync($"{Base}/mylist?id={id}&bypass_cache=true", ct).ConfigureAwait(false);
+            var code = (int)res.StatusCode;
+            if (code is 401 or 403 or 408 or 429)
+            {
+                return null;
+            }
+
+            var body = await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            try
+            {
+                using var doc = JsonDocument.Parse(body);
+                var root = doc.RootElement;
+                if (root.ValueKind != JsonValueKind.Object)
+                {
+                    return null;
+                }
+
+                // TorBox's own answer: the download, or its "no such download" error.
+                return res.IsSuccessStatusCode
+                    && !(root.TryGetProperty("success", out var ok) && ok.ValueKind == JsonValueKind.False)
+                    && root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object;
+            }
+            catch (JsonException)
+            {
+                // An error page from a gateway in front of TorBox (maintenance, overload).
+                return null;
+            }
         }
-        catch (InvalidOperationException)
+        catch (HttpRequestException)
         {
-            return false;
+            return null;
+        }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return null;
         }
     }
 

@@ -231,17 +231,24 @@
     };
   }
 
+  // The line at the top: who is signed in and how many adds are left today.
+  function drawWho() {
+    var s = status;
+    if (!s) return;
+    var who = s.userName || auth.name || '';
+    if (who) auth.name = who;
+    document.getElementById('who').innerHTML =
+      (who ? 'Signed in as <b style="color:var(--text)">' + esc(who) + '</b>' + (s.isAdmin ? ' <span style="opacity:.7">(admin)</span>' : '') + ' · ' : '') +
+      (s.isAdmin || !s.dailyLimit ? 'no daily limit' : s.remainingToday + ' adds left today') +
+      ' · <a href="#" id="so" style="color:inherit;text-decoration:underline">Sign out</a>';
+    var so = document.getElementById('so'); if (so) so.onclick = function (e) { e.preventDefault(); signOut(); };
+  }
+
   function start() {
     app.innerHTML = loading('Checking your access…');
     call('GET', 'TorviaSearch/Status').then(function (s) {
       status = s;
-      var who = s.userName || auth.name || '';
-      if (who) auth.name = who;
-      document.getElementById('who').innerHTML =
-        (who ? 'Signed in as <b style="color:var(--text)">' + esc(who) + '</b>' + (s.isAdmin ? ' <span style="opacity:.7">(admin)</span>' : '') + ' · ' : '') +
-        (s.isAdmin || !s.dailyLimit ? 'no daily limit' : s.remainingToday + ' adds left today') +
-        ' · <a href="#" id="so" style="color:inherit;text-decoration:underline">Sign out</a>';
-      var so = document.getElementById('so'); if (so) so.onclick = function (e) { e.preventDefault(); signOut(); };
+      drawWho();
       if (!s.allowed) { app.innerHTML = '<div class="msg err">Search &amp; Add isn\'t turned on for your account. Ask the server owner.</div>'; return; }
       if (!s.ready) { app.innerHTML = '<div class="msg err">Search &amp; Add isn\'t set up yet (API keys missing in the plugin settings).</div>'; return; }
       document.getElementById('tabs').hidden = false;
@@ -265,7 +272,7 @@
     };
   });
 
-  function showAdds(user) {
+  function showAdds(user, note) {
     setTab('adds');
     var admin = status && status.isAdmin;
     app.innerHTML = loading('Loading ' + (admin ? 'all adds' : 'your adds') + '…');
@@ -297,15 +304,16 @@
         }).join('');
       }
       app.innerHTML = html;
+      if (note) document.getElementById('addsMsg').innerHTML = '<div class="msg ok">✅ ' + esc(note) + '</div>';
       Array.prototype.forEach.call(app.querySelectorAll('[data-u]'), function (b) { b.onclick = function () { showAdds(b.getAttribute('data-u')); }; });
       Array.prototype.forEach.call(app.querySelectorAll('[data-del]'), function (b) {
-        b.onclick = function () { removeAdd(b); };
+        b.onclick = function () { removeAdd(b, user); };
       });
     }).catch(function (e) { app.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
   }
 
   // Two taps to remove (no pop-up dialogs, so it works inside app WebViews too).
-  function removeAdd(b) {
+  function removeAdd(b, user) {
     if (!b.classList.contains('sure')) {
       b.classList.add('sure');
       b.textContent = 'Tap again to remove';
@@ -319,13 +327,13 @@
     call('DELETE', 'TorviaSearch/Adds/' + encodeURIComponent(id)).then(function (r) {
       var card = document.getElementById('a_' + id);
       if (card) card.remove();
-      if (r.deletedFromTorBox) {
-        // An admin delete also clears other users' entries for the same download.
-        Array.prototype.forEach.call(document.querySelectorAll('[data-hash="' + (b.getAttribute('data-hash') || '-') + '"]'), function (c) { c.remove(); });
-      }
       msg.innerHTML = '<div class="msg ok">✅ ' + esc(r.message) + '</div>';
+      if (r.deletedFromTorBox && status && status.isAdmin) {
+        // An admin delete also clears other users' entries for the same download: show the list again.
+        showAdds(user, r.message);
+      }
       if (status && status.remainingToday != null) {
-        call('GET', 'TorviaSearch/Status').then(function (st) { status = st; });
+        call('GET', 'TorviaSearch/Status').then(function (st) { status = st; drawWho(); });
       }
     }).catch(function (e) {
       b.disabled = false; b.classList.remove('sure'); b.textContent = 'Remove';
@@ -531,7 +539,9 @@
     out.innerHTML = '';
     call('POST', 'TorviaSearch/Add', { hash: btn.getAttribute('data-h'), tag: document.getElementById('tag').value }).then(function (r) {
       btn.textContent = 'Added ✓';
-      if (r.remainingToday != null) status.remainingToday = r.remainingToday;
+      // Another episode or release can be added straight away; only this one stays off.
+      Array.prototype.forEach.call(document.querySelectorAll('button[data-h]'), function (b) { if (b !== btn) b.disabled = false; });
+      if (r.remainingToday != null) { status.remainingToday = r.remainingToday; drawWho(); }
       out.innerHTML = '<div class="msg ok">✅ ' + esc(r.message) + '</div>';
       out.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }).catch(function (e) {

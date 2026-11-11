@@ -290,6 +290,29 @@ public class SearchService
     /// <summary>Adds the pick to TorBox, tags it, gets a stream link and starts a Torvia sync.</summary>
     public async Task<AddResult> AddAsync(Guid userId, string userName, bool isAdmin, AddRequest req, CancellationToken ct)
     {
+        var result = await AddCoreAsync(userId, userName, isAdmin, req, ct).ConfigureAwait(false);
+
+        // The stream link can take a while (TorBox lists the files first). It is fetched after
+        // the add itself is finished, so other users' adds and removes don't wait for it.
+        if (result.Ok && Plugin.Instance!.Configuration.ReturnStreamLink
+            && result.TorrentId is { } torrentId
+            && _pending.TryGetValue((req.Hash ?? string.Empty).Trim(), out var p))
+        {
+            try
+            {
+                result.StreamUrl = await _torbox.GetStreamLinkAsync(torrentId, p.Season, p.Episode ?? (p.Type == "tv" ? 1 : null), ct).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException)
+            {
+                _log.LogWarning("Torvia Search: no stream link yet for {Id}: {Msg}", result.TorrentId, e.Message);
+            }
+        }
+
+        return result;
+    }
+
+    private async Task<AddResult> AddCoreAsync(Guid userId, string userName, bool isAdmin, AddRequest req, CancellationToken ct)
+    {
         var cfg = Plugin.Instance!.Configuration;
         var hash = (req.Hash ?? string.Empty).Trim().ToLowerInvariant();
         if (!_pending.TryGetValue(hash, out var p) || p.Expires < DateTime.UtcNow)
@@ -341,23 +364,29 @@ public class SearchService
                 }
 
                 id = await _torbox.CreateAsync(hash, name, ct).ConfigureAwait(false);
-                await _torbox.SetTagsAsync(id, new[] { tag }, ct).ConfigureAwait(false);
+                try
+                {
+                    await _torbox.SetTagsAsync(id, new[] { tag }, ct).ConfigureAwait(false);
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    // Without its tag it would sit in TorBox where nobody can find or remove it.
+                    _log.LogWarning("Torvia Search: could not tag torrent {Id}, taking it out again: {Msg}", id, e.Message);
+                    try
+                    {
+                        await _torbox.DeleteAsync(id, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception)
+                    {
+                        // Nothing more to do here.
+                    }
+
+                    return new AddResult { Message = "TorBox added it but couldn't tag it, so it was taken out again. Try again in a minute." };
+                }
             }
 
             result.TorrentId = id;
             result.Ok = true;
-
-            if (cfg.ReturnStreamLink)
-            {
-                try
-                {
-                    result.StreamUrl = await _torbox.GetStreamLinkAsync(id, p.Season, p.Episode ?? (p.Type == "tv" ? 1 : null), ct).ConfigureAwait(false);
-                }
-                catch (Exception e) when (e is not OperationCanceledException)
-                {
-                    _log.LogWarning("Torvia Search: no stream link yet for {Id}: {Msg}", id, e.Message);
-                }
-            }
 
             // Always bring it into Jellyfin right away.
             result.SyncStarted = StartTorviaSync();
@@ -449,13 +478,21 @@ public class SearchService
 
             // Check TorBox really let it go (wait a moment if it's slow).
             var stillThere = await _torbox.ExistsAsync(rec.TorrentId, ct).ConfigureAwait(false);
-            if (stillThere)
+            if (stillThere == true)
             {
                 await Task.Delay(2000, ct).ConfigureAwait(false);
                 stillThere = await _torbox.ExistsAsync(rec.TorrentId, ct).ConfigureAwait(false);
             }
 
-            if (stillThere)
+            // TorBox refused the delete and can't say whether it's still there: keep the entry,
+            // so it can be removed later.
+            if (stillThere is null && deleteError is not null)
+            {
+                _log.LogWarning("Torvia Search: TorBox not answering, {Name} (torrent {Id}) not removed: {Msg}", rec.Name, rec.TorrentId, deleteError);
+                return (409, $"TorBox isn't answering right now, so “{rec.Name}” was not removed. Try again in a minute.", false);
+            }
+
+            if (stillThere == true)
             {
                 _log.LogWarning("Torvia Search: TorBox did not delete torrent {Id} ({Name})", rec.TorrentId, rec.Name);
                 return (409, $"TorBox didn't delete “{rec.Name}”" + (deleteError is null ? "." : $" ({deleteError}).") + " Try again in a minute.", false);
