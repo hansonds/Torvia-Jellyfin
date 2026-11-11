@@ -7,6 +7,7 @@ on:
     paths-ignore:
       - "**.md"
       - "logo.png"
+      - "screenshots/**"
   workflow_dispatch:
 
 permissions:

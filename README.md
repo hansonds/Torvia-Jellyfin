@@ -37,6 +37,18 @@ even on a small server.
 
 ---
 
+## 📸 Screenshots
+
+<p align="center"><b>Library &amp; playback</b><br>
+<img src="screenshots/settings-library.png" alt="Torvia settings: bandwidth saved, library counts, last sync, library folders and settings" width="820"></p>
+
+<p align="center"><b>Search &amp; Add</b><br>
+<img src="screenshots/settings-search.png" alt="Torvia settings: Search &amp; Add status, keys, tags, allowed users and recent adds" width="820"></p>
+
+<p align="center"><sub>Shown with sample data.</sub></p>
+
+---
+
 ## 🚀 Features
 
 ### Library
@@ -185,7 +197,7 @@ a restart. To update now: **Catalog → Torvia → pick the newest version → I
 | Sync interval | How often TorBox is checked. | every 3 hours |
 | Play straight from TorBox | Apps stream from TorBox directly. | on |
 | Nearest TorBox server for each viewer | Each viewer gets the TorBox server closest to them. | on |
-| Separate folder for each TorBox tag | One library per tag. | on |
+| A folder for each TorBox tag | One library per tag. | on |
 | Include usenet / web downloads | Also list those downloads. | on |
 | Name fixes | Fix titles that come out wrong, one per line: `Kaithi.2019 = Kaithi (2019)` | empty |
 
