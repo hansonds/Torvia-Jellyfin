@@ -5,148 +5,331 @@
     <title>Torvia</title>
 </head>
 <body>
-<div id="PhoenicxTorBoxPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-textarea,emby-select">
+<div id="PhoenicxTorBoxPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-checkbox,emby-select">
+<style>
+    #PhoenicxTorBoxPage .tv { --tv-card: rgba(255,255,255,.045); --tv-line: rgba(255,255,255,.09); --tv-mute: rgba(255,255,255,.62); max-width: 1180px; }
+    #PhoenicxTorBoxPage .tv * { box-sizing: border-box; }
+
+    #PhoenicxTorBoxPage .tv-head { display: flex; align-items: center; gap: 1em; margin: .4em 0 1.4em; flex-wrap: wrap; }
+    #PhoenicxTorBoxPage .tv-logo { width: 52px; height: 52px; border-radius: 14px; flex: none; display: grid; place-items: center;
+        background: radial-gradient(circle at 30% 20%, rgba(34,211,238,.35), transparent 60%), linear-gradient(135deg, #1e1b4b, #3b0764); box-shadow: 0 6px 20px rgba(168,85,247,.25); }
+    #PhoenicxTorBoxPage .tv-title { font-size: 1.7em; font-weight: 700; line-height: 1.1; margin: 0; }
+    #PhoenicxTorBoxPage .tv-tagline { color: var(--tv-mute); margin-top: .2em; }
+    #PhoenicxTorBoxPage .tv-head-right { margin-left: auto; display: flex; gap: .5em; align-items: center; flex-wrap: wrap; }
+    #PhoenicxTorBoxPage .tv-pill { display: inline-flex; align-items: center; gap: .35em; padding: .25em .75em; border-radius: 999px; font-size: .82em;
+        background: var(--tv-card); border: 1px solid var(--tv-line); color: var(--tv-mute); text-decoration: none; }
+    #PhoenicxTorBoxPage a.tv-pill:hover { color: #fff; border-color: rgba(255,255,255,.25); }
+
+    #PhoenicxTorBoxPage .tv-tabs { display: inline-flex; padding: 4px; gap: 4px; border-radius: 12px; background: var(--tv-card); border: 1px solid var(--tv-line); margin-bottom: 1.4em; }
+    #PhoenicxTorBoxPage .tv-tab { background: none; border: 0; color: var(--tv-mute); padding: .55em 1.2em; border-radius: 9px; font: inherit; font-weight: 600; cursor: pointer; }
+    #PhoenicxTorBoxPage .tv-tab:hover { color: #fff; }
+    #PhoenicxTorBoxPage .tv-tab.on { color: #fff; background: linear-gradient(135deg, rgba(168,85,247,.55), rgba(34,211,238,.35)); }
+
+    #PhoenicxTorBoxPage .tv-grid { display: grid; gap: 1em; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #PhoenicxTorBoxPage .tv-overview { display: grid; gap: 1em; grid-template-columns: 1.4fr 1fr 1fr; margin-bottom: 1em; }
+    @media (max-width: 900px) { #PhoenicxTorBoxPage .tv-overview, #PhoenicxTorBoxPage .tv-grid { grid-template-columns: 1fr; } }
+    #PhoenicxTorBoxPage .tv-card { background: var(--tv-card); border: 1px solid var(--tv-line); border-radius: 14px; padding: 1.1em 1.25em; }
+    #PhoenicxTorBoxPage .tv-card h3 { margin: 0 0 .2em; font-size: 1.05em; font-weight: 700; }
+    #PhoenicxTorBoxPage .tv-sub { color: var(--tv-mute); font-size: .88em; margin-bottom: 1em; }
+    #PhoenicxTorBoxPage .tv-full { grid-column: 1 / -1; }
+    #PhoenicxTorBoxPage .tv-label { font-size: .78em; letter-spacing: .06em; text-transform: uppercase; color: var(--tv-mute); }
+    #PhoenicxTorBoxPage .tv-big { font-size: 2.1em; font-weight: 800; line-height: 1.15; margin: .1em 0; }
+    #PhoenicxTorBoxPage .tv-mute { color: var(--tv-mute); }
+    #PhoenicxTorBoxPage .tv-small { font-size: .85em; }
+
+    #PhoenicxTorBoxPage .tv-hero { background: linear-gradient(135deg, rgba(34,211,238,.13), rgba(168,85,247,.18)); border-color: rgba(168,85,247,.35); }
+    #PhoenicxTorBoxPage .tv-split { margin-top: .7em; display: grid; grid-template-columns: 1fr auto; gap: .2em .8em; font-size: .88em; padding: .6em .8em; border-radius: 10px; background: rgba(0,0,0,.22); }
+    #PhoenicxTorBoxPage .tv-split b { text-align: right; }
+    #PhoenicxTorBoxPage .tv-split .tv-total { border-top: 1px solid var(--tv-line); padding-top: .25em; margin-top: .15em; }
+    #PhoenicxTorBoxPage .tv-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5em; margin-top: .6em; }
+    #PhoenicxTorBoxPage .tv-counts div { background: rgba(0,0,0,.2); border-radius: 10px; padding: .6em .4em; text-align: center; }
+    #PhoenicxTorBoxPage .tv-counts b { display: block; font-size: 1.5em; }
+    #PhoenicxTorBoxPage .tv-dot { width: .6em; height: .6em; border-radius: 50%; display: inline-block; background: #888; vertical-align: middle; }
+    #PhoenicxTorBoxPage .tv-dot.ok { background: #34d399; box-shadow: 0 0 8px #34d399; }
+    #PhoenicxTorBoxPage .tv-dot.bad { background: #f87171; box-shadow: 0 0 8px #f87171; }
+
+    #PhoenicxTorBoxPage .tv-folders { width: 100%; border-collapse: collapse; font-size: .9em; }
+    #PhoenicxTorBoxPage .tv-folders td { padding: .55em .4em; border-top: 1px solid var(--tv-line); vertical-align: middle; }
+    #PhoenicxTorBoxPage .tv-folders tr:first-child td { border-top: 0; }
+    #PhoenicxTorBoxPage .tv-folders code { font-size: .92em; background: rgba(0,0,0,.25); padding: .2em .45em; border-radius: 6px; word-break: break-all; }
+    #PhoenicxTorBoxPage .tv-type { font-size: .78em; padding: .15em .6em; border-radius: 999px; border: 1px solid var(--tv-line); color: var(--tv-mute); white-space: nowrap; }
+    #PhoenicxTorBoxPage .tv-copy { background: none; border: 1px solid var(--tv-line); color: var(--tv-mute); border-radius: 8px; padding: .25em .65em; cursor: pointer; font: inherit; font-size: .8em; white-space: nowrap; }
+    #PhoenicxTorBoxPage .tv-copy:hover { color: #fff; border-color: rgba(255,255,255,.3); }
+
+    #PhoenicxTorBoxPage .tv-btn { display: inline-flex; align-items: center; gap: .45em; border: 1px solid var(--tv-line); background: rgba(255,255,255,.07); color: #fff;
+        padding: .55em 1.05em; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+    #PhoenicxTorBoxPage .tv-btn:hover { background: rgba(255,255,255,.12); }
+    #PhoenicxTorBoxPage .tv-btn.primary { border: 0; background: linear-gradient(135deg, #8b5cf6, #06b6d4); }
+    #PhoenicxTorBoxPage .tv-btn.primary:hover { filter: brightness(1.1); }
+    #PhoenicxTorBoxPage .tv-btn[disabled] { opacity: .55; cursor: default; }
+    #PhoenicxTorBoxPage .tv-row { display: flex; gap: .6em; align-items: center; flex-wrap: wrap; }
+    #PhoenicxTorBoxPage .tv-note { font-size: .86em; min-height: 1.2em; }
+    #PhoenicxTorBoxPage .tv-note.ok { color: #6ee7b7; }
+    #PhoenicxTorBoxPage .tv-note.bad { color: #fca5a5; }
+
+    #PhoenicxTorBoxPage .tv-savebar { margin-top: 1.2em; padding: .8em 1em; border-radius: 14px; display: flex; align-items: center; gap: 1em;
+        background: rgba(20,20,28,.9); backdrop-filter: blur(8px); border: 1px solid var(--tv-line); }
+    #PhoenicxTorBoxPage .tv-savebar .tv-mute { font-size: .88em; }
+
+    #PhoenicxTorBoxPage .tv .inputContainer, #PhoenicxTorBoxPage .tv .selectContainer { margin-bottom: 1.2em; }
+    #PhoenicxTorBoxPage .tv .checkboxContainer { margin-bottom: .9em; }
+    #PhoenicxTorBoxPage .tv-textarea { width: 100%; min-height: 7.5em; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: .9em; line-height: 1.5;
+        color: inherit; background: rgba(0,0,0,.25); border: 1px solid var(--tv-line); border-radius: 10px; padding: .7em .8em; }
+    #PhoenicxTorBoxPage .tv-textarea:focus { outline: none; border-color: #a855f7; }
+
+    #PhoenicxTorBoxPage .tv-users { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: .45em; margin: .3em 0 1.2em; }
+    #PhoenicxTorBoxPage .tv-user { display: flex; align-items: center; gap: .55em; padding: .5em .7em; border-radius: 10px; border: 1px solid var(--tv-line); background: rgba(0,0,0,.18); cursor: pointer; }
+    #PhoenicxTorBoxPage .tv-user.on { border-color: rgba(168,85,247,.6); background: rgba(168,85,247,.14); }
+    #PhoenicxTorBoxPage .tv-user input { accent-color: #a855f7; width: 1.05em; height: 1.05em; margin: 0; }
+    #PhoenicxTorBoxPage .tv-user .tv-admin { font-size: .72em; color: var(--tv-mute); margin-left: auto; }
+    #PhoenicxTorBoxPage .tv-users.off { opacity: .45; pointer-events: none; }
+
+    #PhoenicxTorBoxPage .tv-hist > div { display: flex; gap: .7em; align-items: baseline; padding: .5em 0; border-top: 1px solid var(--tv-line); font-size: .9em; flex-wrap: wrap; }
+    #PhoenicxTorBoxPage .tv-hist > div:first-child { border-top: 0; }
+    #PhoenicxTorBoxPage .tv-hist .tv-when { margin-left: auto; color: var(--tv-mute); font-size: .85em; white-space: nowrap; }
+
+    #PhoenicxTorBoxPage .tv-foot { margin: 2.2em 0 1em; text-align: center; color: var(--tv-mute); line-height: 1.7; font-size: .9em; }
+    #PhoenicxTorBoxPage .tv-foot a { color: inherit; }
+    #PhoenicxTorBoxPage #tzMine { color: #c084fc; }
+</style>
+
     <div data-role="content">
-        <div class="content-primary">
-            <h2 class="sectionTitle">Torvia</h2>
-            <p style="margin-top:-.5em;opacity:.75"><i>Straight from TorBox to Jellyfin</i></p>
-            <div class="tvTabs" style="display:flex;gap:.5em;margin:1em 0 1.2em;border-bottom:1px solid rgba(255,255,255,.12)">
-                <button type="button" class="tvTab" data-tab="main">Torvia</button>
-                <button type="button" class="tvTab" data-tab="search">Torvia Search</button>
-            </div>
+        <div class="content-primary tv">
 
-            <div class="tvPane" data-pane="main">
-            <p>Your TorBox movies and series as Jellyfin libraries, played straight from TorBox. Watch history stays on this server for every user.</p>
-
-            <div id="ptbStats" style="display:none;padding:1em 1.2em;border-radius:10px;margin:1em 0;background:linear-gradient(135deg,rgba(34,211,238,.14),rgba(168,85,247,.16));border:1px solid rgba(168,85,247,.35)"></div>
-
-            <div id="ptbStatus" style="padding:1em;border-radius:8px;background:rgba(255,255,255,0.06);margin:1em 0;line-height:1.6">Loading…</div>
-
-            <form id="PhoenicxTorBoxForm">
-                <div class="inputContainer">
-                    <input is="emby-input" type="password" id="TorBoxApiKey" label="TorBox API key" autocomplete="off" />
-                    <div class="fieldDescription">torbox.app → Settings → API key. It stays on this server; clients never see it.</div>
-                </div>
-                <div class="inputContainer">
-                    <input is="emby-input" type="text" id="PublicServerUrl" label="Public server address (optional)" placeholder="Automatic" />
-                    <div class="fieldDescription">Leave empty: each app gets the address it used to connect. Only fill it in if TorBox videos don't start behind your reverse proxy (e.g. https://jellyfin.example.com).</div>
-                </div>
-                <div class="inputContainer">
-                    <input is="emby-input" type="text" id="TimeZone" label="Your time zone" />
-                    <div class="fieldDescription">For the Search daily limit ("today") and the monthly bandwidth counter. E.g. <code>Asia/Kolkata</code> or <code>+05:30</code>. Empty = the server's clock (often UTC in Docker). <a href="#" id="tzMine" class="button-link">Use my time zone</a></div>
-                </div>
-                <div class="inputContainer">
-                    <input is="emby-input" type="text" id="LibraryPath" label="Library folder (optional)" />
-                    <div class="fieldDescription">Leave empty to use the default folder shown above.</div>
-                </div>
-                <div class="selectContainer">
-                    <select is="emby-select" id="SyncIntervalMinutes" label="Sync interval">
-                        <option value="30">Every 30 minutes</option>
-                        <option value="60">Every hour</option>
-                        <option value="120">Every 2 hours</option>
-                        <option value="180">Every 3 hours</option>
-                        <option value="360">Every 6 hours</option>
-                        <option value="720">Every 12 hours</option>
-                        <option value="1440">Once a day</option>
-                        <option value="0">Only at startup and with Sync now</option>
-                    </select>
-                    <div class="fieldDescription">How often new and removed TorBox downloads are picked up.</div>
-                </div>
-                <div class="checkboxContainer checkboxContainer-withDescription">
-                    <label><input is="emby-checkbox" type="checkbox" id="DirectToClients" /><span>Play straight from TorBox</span></label>
-                    <div class="fieldDescription checkboxFieldDescription">Clients open the TorBox link themselves, so the video does not pass through this server.</div>
-                </div>
-                <div class="checkboxContainer checkboxContainer-withDescription">
-                    <label><input is="emby-checkbox" type="checkbox" id="FoldersByTag" /><span>Separate folder for each TorBox tag</span></label>
-                    <div class="fieldDescription checkboxFieldDescription">Downloads you tag on TorBox (e.g. movies, cinema, tv-shows) go into their own folder, so each tag can be its own library. Untagged ones stay in Movies / Shows. Keep movies and series in different tags.</div>
-                </div>
-                <div class="checkboxContainer checkboxContainer-withDescription">
-                    <label><input is="emby-checkbox" type="checkbox" id="NearestServerPerViewer" /><span>Nearest TorBox server for each viewer</span></label>
-                    <div class="fieldDescription checkboxFieldDescription">Each viewer streams from the TorBox server closest to them (their internet address is passed to TorBox when the link is made). Only has an effect if your TorBox CDN setting is on Auto.</div>
-                </div>
-                <div class="checkboxContainer">
-                    <label><input is="emby-checkbox" type="checkbox" id="IncludeUsenet" /><span>Include usenet downloads</span></label>
-                </div>
-                <div class="checkboxContainer">
-                    <label><input is="emby-checkbox" type="checkbox" id="IncludeWebDownloads" /><span>Include web downloads</span></label>
-                </div>
-                <div class="inputContainer">
-                    <textarea is="emby-textarea" id="NameFixes" label="Name fixes" rows="5" style="font-family:monospace"></textarea>
-                    <div class="fieldDescription">One per line: <code>text in the TorBox name = Title (Year)</code>. Example: <code>Kaithi.2019 = Kaithi (2019)</code></div>
+            <div class="tv-head">
+                <div class="tv-logo">
+                    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="tvg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#d946ef"/></linearGradient></defs><path d="M12 2.5 21.5 19.5H2.5Z" fill="none" stroke="url(#tvg)" stroke-width="2.4" stroke-linejoin="round"/><path d="M10 11.2v5.6l4.6-2.8Z" fill="#fff"/></svg>
                 </div>
                 <div>
-                    <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
-                    <button is="emby-button" type="button" id="ptbTest" class="raised block"><span>Test API key</span></button>
-                    <button is="emby-button" type="button" id="ptbSync" class="raised block"><span>Sync now</span></button>
+                    <h2 class="tv-title">Torvia</h2>
+                    <div class="tv-tagline">Your TorBox movies and series in Jellyfin</div>
                 </div>
-            </form>
+                <div class="tv-head-right">
+                    <span class="tv-pill" id="tvVersion">Version …</span>
+                    <a class="tv-pill" href="https://github.com/hansonds/Torvia-Jellyfin" target="_blank" rel="noopener">GitHub</a>
+                </div>
             </div>
 
+            <div class="tv-tabs" role="tablist">
+                <button type="button" class="tv-tab" data-tab="main">Library &amp; playback</button>
+                <button type="button" class="tv-tab" data-tab="search">Search &amp; Add</button>
+            </div>
+
+            <!-- ============ TAB 1 ============ -->
+            <div class="tvPane" data-pane="main">
+
+                <div class="tv-overview">
+                    <div class="tv-card tv-hero" id="ptbStats">
+                        <div class="tv-label">Bandwidth saved</div>
+                        <div class="tv-big">—</div>
+                        <div class="tv-mute tv-small">Shows after the first TorBox play this month.</div>
+                    </div>
+                    <div class="tv-card" id="ptbLibrary">
+                        <div class="tv-label">From TorBox</div>
+                        <div class="tv-counts">
+                            <div><b id="ptbMovies">—</b><span class="tv-mute tv-small">Movies</span></div>
+                            <div><b id="ptbShows">—</b><span class="tv-mute tv-small">Series</span></div>
+                            <div><b id="ptbEpisodes">—</b><span class="tv-mute tv-small">Episodes</span></div>
+                        </div>
+                    </div>
+                    <div class="tv-card">
+                        <div class="tv-label">Last sync</div>
+                        <div id="ptbSyncWhen" style="font-size:1.25em;font-weight:700;margin:.25em 0">Loading…</div>
+                        <div id="ptbSyncMsg" class="tv-mute tv-small"></div>
+                        <div class="tv-row" style="margin-top:.8em">
+                            <button type="button" class="tv-btn primary" id="ptbSync">⟳ Sync now</button>
+                            <span class="tv-note" id="ptbSyncNote"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tv-card" style="margin-bottom:1em">
+                    <h3>📁 Library folders</h3>
+                    <div class="tv-sub">Add each folder as its own library in Dashboard → Libraries → Add Media Library. Use type <b>Movies</b> for movie folders and <b>Shows</b> for series. Don't add the parent folder.</div>
+                    <table class="tv-folders" id="ptbFolders"><tr><td class="tv-mute">Loading…</td></tr></table>
+                    <div id="ptbSkipped"></div>
+                </div>
+
+                <form id="PhoenicxTorBoxForm">
+                    <div class="tv-grid">
+                        <div class="tv-card">
+                            <h3>🔑 TorBox connection</h3>
+                            <div class="tv-sub">The key stays on this server. Apps never see it.</div>
+                            <div class="inputContainer">
+                                <input is="emby-input" type="password" id="TorBoxApiKey" label="TorBox API key" autocomplete="off" />
+                                <div class="fieldDescription">torbox.app → Settings → API key.</div>
+                            </div>
+                            <div class="tv-row">
+                                <button type="button" class="tv-btn" id="ptbTest">Test key</button>
+                                <span class="tv-note" id="ptbTestNote"></span>
+                            </div>
+                        </div>
+
+                        <div class="tv-card">
+                            <h3>🔄 Sync</h3>
+                            <div class="tv-sub">How often Torvia checks TorBox for new and removed titles.</div>
+                            <div class="selectContainer">
+                                <select is="emby-select" id="SyncIntervalMinutes" label="Sync interval">
+                                    <option value="30">Every 30 minutes</option>
+                                    <option value="60">Every hour</option>
+                                    <option value="120">Every 2 hours</option>
+                                    <option value="180">Every 3 hours</option>
+                                    <option value="360">Every 6 hours</option>
+                                    <option value="720">Every 12 hours</option>
+                                    <option value="1440">Once a day</option>
+                                    <option value="0">Only at startup and with Sync now</option>
+                                </select>
+                            </div>
+                            <div class="inputContainer">
+                                <input is="emby-input" type="text" id="TimeZone" label="Your time zone" placeholder="Server clock" />
+                                <div class="fieldDescription">Used for the daily add limit and the monthly counter, e.g. <code>Asia/Kolkata</code> or <code>+05:30</code>. <a href="#" id="tzMine" class="button-link">Use my time zone</a></div>
+                            </div>
+                            <div class="inputContainer" style="margin-bottom:0">
+                                <input is="emby-input" type="text" id="LibraryPath" label="Library folder (optional)" placeholder="Default" />
+                                <div class="fieldDescription">Leave empty to use the default folder.</div>
+                            </div>
+                        </div>
+
+                        <div class="tv-card">
+                            <h3>▶️ Playback</h3>
+                            <div class="tv-sub">Video goes from TorBox to the app, not through this server.</div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="DirectToClients" /><span>Play straight from TorBox</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">Apps open the TorBox link themselves.</div>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="NearestServerPerViewer" /><span>Nearest TorBox server for each viewer</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">Your TorBox CDN setting must be on Auto.</div>
+                            </div>
+                            <div class="inputContainer" style="margin-bottom:0">
+                                <input is="emby-input" type="text" id="PublicServerUrl" label="Public server address (optional)" placeholder="Automatic" />
+                                <div class="fieldDescription">Leave empty unless videos don't start behind a reverse proxy.</div>
+                            </div>
+                        </div>
+
+                        <div class="tv-card">
+                            <h3>🗂️ What to include</h3>
+                            <div class="tv-sub">Which TorBox downloads become library items.</div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="FoldersByTag" /><span>A folder for each TorBox tag</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">Each tag (e.g. movies, cinema, tv-shows) can be its own library. Keep movies and series in different tags.</div>
+                            </div>
+                            <div class="checkboxContainer">
+                                <label><input is="emby-checkbox" type="checkbox" id="IncludeUsenet" /><span>Usenet downloads</span></label>
+                            </div>
+                            <div class="checkboxContainer" style="margin-bottom:0">
+                                <label><input is="emby-checkbox" type="checkbox" id="IncludeWebDownloads" /><span>Web downloads</span></label>
+                            </div>
+                        </div>
+
+                        <div class="tv-card tv-full">
+                            <h3>✏️ Name fixes</h3>
+                            <div class="tv-sub">Only needed when a title comes out wrong. One per line: <code>text in the TorBox name = Title (Year)</code></div>
+                            <textarea id="NameFixes" class="tv-textarea" spellcheck="false" placeholder="Kaithi.2019 = Kaithi (2019)"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="tv-savebar">
+                        <button type="submit" class="tv-btn primary">Save settings</button>
+                        <span class="tv-mute">Changes apply right away.</span>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ============ TAB 2 ============ -->
             <div class="tvPane" data-pane="search" style="display:none">
-            <p>Users you allow below can use <b>Search &amp; Add</b> on the web page shown below (and in apps that support it, like PHOENIXA). They search a title, pick a release that TorBox already has cached, and it is added to your TorBox with a tag. Torvia then brings it into Jellyfin. Your API keys stay on this server; apps never see them.</p>
 
-            <div id="tsStatus" style="padding:1em;border-radius:8px;background:rgba(255,255,255,0.06);margin:1em 0;line-height:1.6">Loading…</div>
-
-            <form id="TorviaSearchForm">
-                <h3 class="sectionTitle">Keys</h3>
-                <div class="fieldDescription" style="margin-bottom:1em">The TorBox API key is the one on the Torvia tab.</div>
-                <div class="inputContainer">
-                    <input is="emby-input" type="password" id="TmdbApiKey" label="TMDB API key" autocomplete="off" />
-                    <div class="fieldDescription">themoviedb.org → Settings → API. The v3 key or the v4 read access token both work. TMDB is reached from this server (it uses the server's proxy settings, if any).</div>
-                </div>
-                <div class="inputContainer">
-                    <input is="emby-input" type="text" id="TorrentioUrl" label="Torrentio address" />
-                    <div class="fieldDescription">Default https://torrentio.strem.fun. You can paste a configured Torrentio link (with providers chosen); /manifest.json at the end is removed.</div>
+                <div class="tv-card tv-hero" style="margin-bottom:1em">
+                    <div class="tv-label">Search &amp; Add</div>
+                    <div id="tsStatus" style="font-size:1.25em;font-weight:700;margin:.25em 0">Loading…</div>
+                    <div class="tv-mute tv-small">Allowed users search a title, pick a release TorBox already has, and it's added to TorBox with a tag. Torvia then brings it into Jellyfin.</div>
+                    <div class="tv-row" style="margin-top:.9em">
+                        <code id="tsWeb" style="background:rgba(0,0,0,.28);padding:.45em .7em;border-radius:8px;word-break:break-all">…</code>
+                        <a class="tv-btn" id="tsOpen" href="#" target="_blank" rel="noopener">Open</a>
+                        <button type="button" class="tv-btn" id="tsCopy">Copy link</button>
+                    </div>
                 </div>
 
-                <h3 class="sectionTitle">Who can use it</h3>
-                <div class="checkboxContainer checkboxContainer-withDescription">
-                    <label><input is="emby-checkbox" type="checkbox" id="AllowAllUsers" /><span>Every user on this server</span></label>
-                    <div class="fieldDescription checkboxFieldDescription">Leave off and tick users below to keep it private. Admins can always use it.</div>
-                </div>
-                <div id="tsUsers" style="margin:.5em 0 1.5em 0"></div>
-                <div class="inputContainer">
-                    <input is="emby-input" type="number" id="DailyLimitPerUser" label="Adds per user per day" min="0" max="500" />
-                    <div class="fieldDescription">0 = no limit. Admins have no limit. Counts reset at midnight UTC and when the server restarts.</div>
-                </div>
+                <form id="TorviaSearchForm">
+                    <div class="tv-grid">
+                        <div class="tv-card">
+                            <h3>🔑 Keys &amp; sources</h3>
+                            <div class="tv-sub">The TorBox key is set on the first tab.</div>
+                            <div class="inputContainer">
+                                <input is="emby-input" type="password" id="TmdbApiKey" label="TMDB API key" autocomplete="off" />
+                                <div class="fieldDescription">themoviedb.org → Settings → API (v3 key or v4 token).</div>
+                            </div>
+                            <div class="inputContainer" style="margin-bottom:0">
+                                <input is="emby-input" type="text" id="TorrentioUrl" label="Torrentio address" />
+                                <div class="fieldDescription">Default <code>https://torrentio.strem.fun</code>. A configured Torrentio link works too.</div>
+                            </div>
+                        </div>
 
-                <h3 class="sectionTitle">Tags</h3>
-                <div class="inputContainer">
-                    <input is="emby-input" type="text" id="Tags" label="Tags users can pick (comma separated)" />
-                    <div class="fieldDescription">Use the same TorBox tags as your Torvia tag folders, e.g. movies, tv-shows, cinema.</div>
-                </div>
-                <div class="inputContainer">
-                    <input is="emby-input" type="text" id="MovieTag" label="Default tag for movies" />
-                </div>
-                <div class="inputContainer">
-                    <input is="emby-input" type="text" id="TvTag" label="Default tag for TV shows" />
-                </div>
+                        <div class="tv-card">
+                            <h3>🏷️ Tags</h3>
+                            <div class="tv-sub">Use the same tags as your library folders.</div>
+                            <div class="inputContainer">
+                                <input is="emby-input" type="text" id="Tags" label="Tags users can pick" />
+                                <div class="fieldDescription">Comma separated, e.g. <code>movies, tv-shows, cinema</code>.</div>
+                            </div>
+                            <div class="tv-row" style="gap:1em;align-items:flex-start">
+                                <div class="inputContainer" style="flex:1;min-width:140px;margin-bottom:0">
+                                    <input is="emby-input" type="text" id="MovieTag" label="Default for movies" />
+                                </div>
+                                <div class="inputContainer" style="flex:1;min-width:140px;margin-bottom:0">
+                                    <input is="emby-input" type="text" id="TvTag" label="Default for TV shows" />
+                                </div>
+                            </div>
+                        </div>
 
-                <h3 class="sectionTitle">Options</h3>
-                <div class="checkboxContainer checkboxContainer-withDescription">
-                    <label><input is="emby-checkbox" type="checkbox" id="ReturnStreamLink" /><span>Give a direct stream link after adding</span></label>
-                    <div class="fieldDescription checkboxFieldDescription">The app can offer "Play now" before Jellyfin has the title.</div>
-                </div>
-                <div class="checkboxContainer checkboxContainer-withDescription">
-                    <label><input is="emby-checkbox" type="checkbox" id="ShowCam" /><span>Show CAM/TS releases</span></label>
-                    <div class="fieldDescription checkboxFieldDescription">They are marked ⚠️ and always listed last.</div>
-                </div>
+                        <div class="tv-card tv-full">
+                            <h3>👥 Who can use it</h3>
+                            <div class="tv-sub">Admins can always use it, with no daily limit.</div>
+                            <div class="checkboxContainer">
+                                <label><input is="emby-checkbox" type="checkbox" id="AllowAllUsers" /><span>Every user on this server</span></label>
+                            </div>
+                            <div id="tsUsers" class="tv-users"></div>
+                            <div class="inputContainer" style="max-width:320px;margin-bottom:0">
+                                <input is="emby-input" type="number" id="DailyLimitPerUser" label="Adds per user per day" min="0" max="500" />
+                                <div class="fieldDescription">0 = no limit. Resets at midnight in the time zone set on the first tab.</div>
+                            </div>
+                        </div>
 
-                <button is="emby-button" type="submit" class="raised button-submit block"><span>Save</span></button>
-            </form>
+                        <div class="tv-card">
+                            <h3>⚙️ Options</h3>
+                            <div class="tv-sub">What users see in the results.</div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="ShowCam" /><span>Show CAM/TS releases</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">Marked ⚠️ and always listed last.</div>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription" style="margin-bottom:0">
+                                <label><input is="emby-checkbox" type="checkbox" id="ReturnStreamLink" /><span>Stream link for apps after adding</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">Apps can offer "Play now" before Jellyfin has the title.</div>
+                            </div>
+                        </div>
 
-            <h3 class="sectionTitle" style="margin-top:2em">Recent adds</h3>
-            <div id="tsHistory" style="opacity:.85;line-height:1.7">—</div>
+                        <div class="tv-card">
+                            <h3>🕘 Recent adds</h3>
+                            <div class="tv-sub">Since the server started.</div>
+                            <div id="tsHistory" class="tv-hist tv-mute">—</div>
+                        </div>
+                    </div>
 
+                    <div class="tv-savebar">
+                        <button type="submit" class="tv-btn primary">Save settings</button>
+                        <span class="tv-mute">Changes apply right away.</span>
+                    </div>
+                </form>
             </div>
 
-            <div style="margin-top:2.5em;text-align:center;opacity:.8;line-height:1.7">
+            <div class="tv-foot">
                 <div><b>Torvia</b> : Made by Hanson D with ❤️</div>
-                <div><a href="https://phoenicx.org" target="_blank" rel="noopener" class="button-link">phoenicx.org</a></div>
+                <div><a href="https://phoenicx.org" target="_blank" rel="noopener">phoenicx.org</a></div>
             </div>
         </div>
     </div>
 
+    <!-- ============ Tab 1 script ============ -->
     <script type="text/javascript">
         (function () {
             var pluginId = 'd793e3f9-364f-4640-9ebb-7c807bfcb90e';
@@ -154,82 +337,105 @@
             var fields = ['TorBoxApiKey', 'PublicServerUrl', 'TimeZone', 'LibraryPath', 'NameFixes'];
             var checks = ['DirectToClients', 'NearestServerPerViewer', 'FoldersByTag', 'IncludeUsenet', 'IncludeWebDownloads'];
 
+            function $(sel) { return page.querySelector(sel); }
             function esc(s) {
-                return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
-                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+                return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
                 });
             }
-
+            function pick(o, k) { return o[k] !== undefined ? o[k] : o[k.charAt(0).toLowerCase() + k.slice(1)]; }
             function size(b) {
                 var u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0;
                 while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
                 return (i >= 3 ? b.toFixed(1) : Math.round(b)) + ' ' + u[i];
             }
+            function ago(d) {
+                var s = Math.round((Date.now() - d.getTime()) / 1000);
+                if (s < 60) return 'Just now';
+                if (s < 3600) return Math.round(s / 60) + ' min ago';
+                if (s < 86400) return Math.round(s / 3600) + ' h ago';
+                return d.toLocaleDateString();
+            }
+            function note(id, text, cls) { var n = $(id); n.textContent = text; n.className = 'tv-note ' + (cls || ''); }
+            function getJson(path) { return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl(path), dataType: 'json' }); }
 
-            function getJson(path) {
-                return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl(path), dataType: 'json' });
+            function folderRow(type, name, path, count) {
+                return '<tr><td style="width:1%"><span class="tv-type">' + esc(type) + '</span></td>' +
+                    '<td><b>' + esc(name) + '</b>' + (count != null ? ' <span class="tv-mute">· ' + count + ' titles</span>' : '') + '</td>' +
+                    '<td><code>' + esc(path) + '</code></td>' +
+                    '<td style="width:1%;text-align:right"><button type="button" class="tv-copy" data-copy="' + esc(path) + '">Copy</button></td></tr>';
             }
 
             function loadStatus() {
                 getJson('PhoenicxTorBox/Status').then(function (s) {
                     var last = s.last || {};
-                    var when = last.FinishedUtc || last.finishedUtc;
-                    var ok = last.Ok !== undefined ? last.Ok : last.ok;
-                    var msg = last.Message || last.message || '';
-                    var skipped = last.Skipped || last.skipped || [];
-                    var tags = last.Tags || last.tags || [];
-                    var tagHtml = '';
-                    if (s.byTag && tags.length) {
-                        tagHtml = '<br><b>Tag folders</b> (add each as its own library — Movies or Shows type to match what you tagged):<br>' +
-                            tags.map(function (t) {
-                                return esc(t.Tag || t.tag) + ' (' + (t.Titles || t.titles || 0) + '): <code>' + esc(t.Path || t.path) + '</code>';
-                            }).join('<br>') + '<br>';
-                    } else if (s.byTag) {
-                        tagHtml = '<br>Tag folders appear here after a sync, once you have tagged downloads on TorBox.<br>';
+                    var when = pick(last, 'FinishedUtc');
+                    var ok = pick(last, 'Ok');
+                    var msg = pick(last, 'Message') || '';
+                    var tags = pick(last, 'Tags') || [];
+                    var skipped = pick(last, 'Skipped') || [];
+
+                    ['Movies', 'Shows', 'Episodes'].forEach(function (k) {
+                        var v = pick(last, k);
+                        $('#ptb' + k).textContent = when && v != null ? Number(v).toLocaleString() : '—';
+                    });
+
+                    $('#ptbSyncWhen').innerHTML = when
+                        ? '<span class="tv-dot ' + (ok ? 'ok' : 'bad') + '"></span> ' + esc(ago(new Date(when)))
+                        : 'Not synced yet';
+                    $('#ptbSyncWhen').title = when ? new Date(when).toLocaleString() : '';
+                    $('#ptbSyncMsg').textContent = msg;
+                    $('#ptbSyncMsg').style.color = when && !ok ? '#fca5a5' : '';
+
+                    var rows = '';
+                    if (s.byTag) {
+                        tags.forEach(function (t) { rows += folderRow('Tag', pick(t, 'Tag'), pick(t, 'Path'), pick(t, 'Titles') || 0); });
+                        if (!tags.length) rows += '<tr><td colspan="4" class="tv-mute">Tag folders appear here after a sync, once downloads on TorBox have tags.</td></tr>';
                     }
-                    var html = '<b>Add these folders as libraries</b> (Dashboard → Libraries → Add Media Library):<br>' +
-                        'Untagged movies: <code>' + esc(s.moviesPath) + '</code><br>' +
-                        'Untagged shows: <code>' + esc(s.showsPath) + '</code><br>' + tagHtml + '<br>' +
-                        '<b>Last sync:</b> ' + (when ? new Date(when).toLocaleString() + ' — ' : '') +
-                        '<span style="color:' + (when ? (ok ? '#6fdc8c' : '#ff7b7b') : 'inherit') + '">' + esc(msg) + '</span>';
-                    if (skipped.length) {
-                        html += '<br><details><summary>' + skipped.length + ' file(s) with names that could not be read</summary><pre style="white-space:pre-wrap">' +
-                            esc(skipped.join('\n')) + '</pre></details>';
-                    }
-                    page.querySelector('#ptbStatus').innerHTML = html;
-                    var st = s.stats;
-                    var box = page.querySelector('#ptbStats');
+                    rows += folderRow('Movies', s.byTag ? 'Untagged movies' : 'Movies', s.moviesPath) +
+                        folderRow('Shows', s.byTag ? 'Untagged shows' : 'Shows', s.showsPath);
+                    $('#ptbFolders').innerHTML = rows;
+                    $('#ptbSkipped').innerHTML = skipped.length
+                        ? '<details style="margin-top:.8em"><summary class="tv-mute" style="cursor:pointer">' + skipped.length + ' file name(s) could not be read — fix them with Name fixes below</summary><pre style="white-space:pre-wrap;font-size:.85em">' + esc(skipped.join('\n')) + '</pre></details>'
+                        : '';
+
+                    var st = s.stats, box = $('#ptbStats');
                     if (st) {
                         var month = st.MonthBytes || 0;
                         var hours = Math.round((st.MonthSeconds || 0) / 360) / 10;
                         var now = new Date();
                         var monthName = now.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
                         var next = new Date(now.getFullYear(), now.getMonth() + 1, 1).toLocaleDateString(undefined, { day: 'numeric', month: 'long' });
-                        box.innerHTML = '<div style="font-size:.85em;opacity:.8;letter-spacing:.05em;text-transform:uppercase">Bandwidth saved · ' + esc(monthName) + '</div>' +
-                            '<div style="font-size:2em;font-weight:700;line-height:1.3">' + size(month * 2) + '</div>' +
-                            '<div style="opacity:.85">server traffic avoided this month by streaming straight from TorBox</div>' +
-                            '<div style="margin:.6em 0;padding:.6em .8em;border-radius:8px;background:rgba(0,0,0,.25);font-size:.9em;line-height:1.7">' +
-                            'TorBox → server (download): <b>' + size(month) + '</b><br>' +
-                            'server → apps (upload): <b>' + size(month) + '</b><br>' +
-                            'Total: ' + size(month) + ' + ' + size(month) + ' = <b>' + size(month * 2) + '</b></div>' +
-                            '<div style="opacity:.85">' + (st.MonthPlays || 0) + ' plays · ' + hours + ' h watched · starts again from zero on ' + esc(next) + '</div>' +
-                            '<div style="font-size:.8em;opacity:.6;margin-top:.4em">Counts TorBox movies and episodes played directly. Estimate: time watched × the file\'s bitrate. Without Torvia, each of those bytes would have come into the server from TorBox and gone out again to the app.</div>';
-                        box.style.display = 'block';
-                    } else {
-                        box.style.display = 'none';
+                        box.innerHTML = '<div class="tv-label">Bandwidth saved · ' + esc(monthName) + '</div>' +
+                            '<div class="tv-big">' + size(month * 2) + '</div>' +
+                            '<div class="tv-mute tv-small">Server traffic avoided by streaming straight from TorBox</div>' +
+                            '<div class="tv-split"><span>TorBox → server (download)</span><b>' + size(month) + '</b>' +
+                            '<span>Server → apps (upload)</span><b>' + size(month) + '</b>' +
+                            '<span class="tv-total">Total</span><b class="tv-total">' + size(month * 2) + '</b></div>' +
+                            '<div class="tv-mute tv-small" style="margin-top:.6em">' + (st.MonthPlays || 0) + ' plays · ' + hours + ' h watched · starts from zero on ' + esc(next) + '</div>';
+                        box.title = "Counts TorBox movies and episodes played directly. Estimate: time watched × the file's bitrate.";
                     }
                 }).catch(function () {
-                    page.querySelector('#ptbStatus').textContent = 'Could not read the status.';
+                    $('#ptbSyncWhen').textContent = 'Could not read the status';
                 });
             }
+
+            page.addEventListener('click', function (e) {
+                var b = e.target.closest && e.target.closest('.tv-copy');
+                if (!b) return;
+                var text = b.getAttribute('data-copy');
+                (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () {
+                    b.textContent = 'Copied ✓'; setTimeout(function () { b.textContent = 'Copy'; }, 1500);
+                }, function () { window.prompt('Copy this folder:', text); });
+            });
 
             page.addEventListener('pageshow', function () {
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
-                    fields.forEach(function (f) { page.querySelector('#' + f).value = config[f] || ''; });
-                    checks.forEach(function (c) { page.querySelector('#' + c).checked = !!config[c]; });
+                    fields.forEach(function (f) { $('#' + f).value = config[f] || ''; });
+                    checks.forEach(function (c) { $('#' + c).checked = !!config[c]; });
                     var iv = config.SyncIntervalMinutes == null ? 180 : config.SyncIntervalMinutes;
-                    var sel = page.querySelector('#SyncIntervalMinutes');
+                    var sel = $('#SyncIntervalMinutes');
                     if (!sel.querySelector('option[value="' + iv + '"]')) {
                         var o = document.createElement('option'); o.value = iv; o.textContent = 'Every ' + iv + ' minutes'; sel.appendChild(o);
                     }
@@ -239,13 +445,13 @@
                 loadStatus();
             });
 
-            page.querySelector('#PhoenicxTorBoxForm').addEventListener('submit', function (e) {
+            $('#PhoenicxTorBoxForm').addEventListener('submit', function (e) {
                 e.preventDefault();
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
-                    fields.forEach(function (f) { config[f] = page.querySelector('#' + f).value.trim(); });
-                    checks.forEach(function (c) { config[c] = page.querySelector('#' + c).checked; });
-                    config.SyncIntervalMinutes = parseInt(page.querySelector('#SyncIntervalMinutes').value, 10) || 0;
+                    fields.forEach(function (f) { config[f] = $('#' + f).value.trim(); });
+                    checks.forEach(function (c) { config[c] = $('#' + c).checked; });
+                    config.SyncIntervalMinutes = parseInt($('#SyncIntervalMinutes').value, 10) || 0;
                     ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
                         Dashboard.processPluginConfigurationUpdateResult(result);
                         loadStatus();
@@ -254,96 +460,115 @@
                 return false;
             });
 
-            page.querySelector('#tzMine').addEventListener('click', function (e) {
+            $('#tzMine').addEventListener('click', function (e) {
                 e.preventDefault();
-                try { page.querySelector('#TimeZone').value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (x) { }
+                try { $('#TimeZone').value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (x) { }
             });
 
-            page.querySelector('#ptbTest').addEventListener('click', function () {
+            $('#ptbTest').addEventListener('click', function () {
+                note('#ptbTestNote', 'Checking…');
                 getJson('PhoenicxTorBox/Test').then(function (r) {
-                    Dashboard.alert((r.ok ? '✔ ' : '✖ ') + r.message + (r.ok ? '' : '\n(Save the key first.)'));
-                });
+                    note('#ptbTestNote', (r.ok ? '✓ ' : '✕ ') + r.message + (r.ok ? '' : ' (save the key first)'), r.ok ? 'ok' : 'bad');
+                }, function () { note('#ptbTestNote', '✕ Could not check the key.', 'bad'); });
             });
 
-            page.querySelector('#ptbSync').addEventListener('click', function () {
+            $('#ptbSync').addEventListener('click', function () {
+                var b = $('#ptbSync');
+                b.disabled = true;
+                note('#ptbSyncNote', 'Syncing…');
                 ApiClient.ajax({ type: 'POST', url: ApiClient.getUrl('PhoenicxTorBox/Sync') }).then(function () {
-                    Dashboard.alert('Sync started. It shows under Dashboard → Scheduled Tasks; this page updates when you reopen it.');
-                    setTimeout(loadStatus, 8000);
-                });
+                    var tries = 0;
+                    var t = setInterval(function () {
+                        loadStatus();
+                        if (++tries >= 12) { clearInterval(t); b.disabled = false; note('#ptbSyncNote', ''); }
+                    }, 5000);
+                }, function () { b.disabled = false; note('#ptbSyncNote', 'Could not start the sync.', 'bad'); });
             });
         })();
     </script>
+
+    <!-- ============ Tab 2 script ============ -->
     <script type="text/javascript">
         (function () {
             var pluginId = 'd793e3f9-364f-4640-9ebb-7c807bfcb90e';
             var page = document.querySelector('#PhoenicxTorBoxPage');
             var fields = ['TmdbApiKey', 'TorrentioUrl', 'Tags', 'MovieTag', 'TvTag', 'DailyLimitPerUser'];
             var checks = ['AllowAllUsers', 'ReturnStreamLink', 'ShowCam'];
-            var publicUrl = ''; // "Public server address" from the Torvia tab
+            var publicUrl = '';
 
+            function $(sel) { return page.querySelector(sel); }
             function esc(s) {
                 return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
                     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
                 });
             }
-
-            function api(path) {
-                return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl(path), dataType: 'json' });
-            }
+            function api(path) { return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl(path), dataType: 'json' }); }
 
             function loadStatus() {
                 api('TorviaSearch/Status').then(function (s) {
                     var pub = (publicUrl || '').trim().replace(/\/+$/, '');
                     var web = pub ? pub + '/TorviaSearch/Web' : ApiClient.getUrl('TorviaSearch/Web');
-                    page.querySelector('#tsStatus').innerHTML =
-                        (s.ready ? '✅ Ready.' : '⚠️ Add the TMDB key here (and the TorBox key on the Torvia tab).') + '<br>' +
-                                                'Web page for allowed users: <a href="' + esc(web) + '" target="_blank" style="color:inherit">' + esc(web) + '</a><br>' +
-                        '<span style="opacity:.7">Version ' + esc(s.version) + '</span>';
-                }, function () {
-                    page.querySelector('#tsStatus').textContent = 'Could not read status.';
-                });
+                    $('#tsStatus').innerHTML = s.ready
+                        ? '<span class="tv-dot ok"></span> Ready'
+                        : '<span class="tv-dot bad"></span> Needs a TMDB key below and the TorBox key on the first tab';
+                    $('#tsWeb').textContent = web;
+                    $('#tsOpen').href = web;
+                    $('#tvVersion').textContent = 'Version ' + (s.version || '?');
+                }, function () { $('#tsStatus').textContent = 'Could not read the status'; });
 
                 api('TorviaSearch/History').then(function (h) {
                     var items = (h && h.items) || [];
-                    page.querySelector('#tsHistory').innerHTML = items.length ? items.map(function (i) {
-                        return '<div><b>' + esc(i.user) + '</b> · ' + esc(i.title) + ' <span style="opacity:.6">[' + esc(i.tag) + '] ' +
-                            esc(new Date(i.when).toLocaleString()) + '</span></div>';
-                    }).join('') : 'Nothing added since the server started.';
+                    $('#tsHistory').innerHTML = items.length ? items.slice(0, 10).map(function (i) {
+                        return '<div><b style="color:#fff">' + esc(i.user) + '</b><span style="color:#fff">' + esc(i.title) + '</span> <span class="tv-type">' + esc(i.tag) + '</span>' +
+                            '<span class="tv-when">' + esc(new Date(i.when).toLocaleString()) + '</span></div>';
+                    }).join('') : 'Nothing added yet.';
                 });
+            }
+
+            function refreshUsers() {
+                $('#tsUsers').classList.toggle('off', $('#AllowAllUsers').checked);
+                page.querySelectorAll('.tv-user').forEach(function (l) { l.classList.toggle('on', l.querySelector('input').checked); });
             }
 
             function loadUsers(allowed) {
                 ApiClient.getUsers().then(function (users) {
-                    var box = page.querySelector('#tsUsers');
-                    box.innerHTML = users.map(function (u) {
+                    $('#tsUsers').innerHTML = users.map(function (u) {
                         var isAdmin = u.Policy && u.Policy.IsAdministrator;
                         var on = isAdmin || allowed.indexOf(u.Id) >= 0 || allowed.indexOf(u.Id.replace(/-/g, '')) >= 0;
-                        return '<label style="display:flex;align-items:center;gap:.6em;padding:.25em 0">' +
-                            '<input type="checkbox" class="tsUser" data-id="' + esc(u.Id) + '"' + (on ? ' checked' : '') + (isAdmin ? ' disabled' : '') + ' />' +
-                            '<span>' + esc(u.Name) + (isAdmin ? ' <span style="opacity:.6">(admin — always allowed)</span>' : '') + '</span></label>';
+                        return '<label class="tv-user"><input type="checkbox" class="tsUser" data-id="' + esc(u.Id) + '"' + (on ? ' checked' : '') + (isAdmin ? ' disabled' : '') + ' />' +
+                            '<span>' + esc(u.Name) + '</span>' + (isAdmin ? '<span class="tv-admin">admin</span>' : '') + '</label>';
                     }).join('');
+                    refreshUsers();
                 });
             }
 
+            $('#AllowAllUsers').addEventListener('change', refreshUsers);
+            $('#tsUsers').addEventListener('change', refreshUsers);
+
+            $('#tsCopy').addEventListener('click', function () {
+                var b = $('#tsCopy'), text = $('#tsWeb').textContent;
+                (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () {
+                    b.textContent = 'Copied ✓'; setTimeout(function () { b.textContent = 'Copy link'; }, 1500);
+                }, function () { window.prompt('Copy this link:', text); });
+            });
+
             page.addEventListener('pageshow', function () {
-                Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(pluginId).then(function (c) {
                     publicUrl = c.PublicServerUrl || '';
-                    fields.forEach(function (f) { page.querySelector('#' + f).value = c[f] == null ? '' : c[f]; });
-                    checks.forEach(function (f) { page.querySelector('#' + f).checked = !!c[f]; });
+                    fields.forEach(function (f) { $('#' + f).value = c[f] == null ? '' : c[f]; });
+                    checks.forEach(function (f) { $('#' + f).checked = !!c[f]; });
                     loadUsers(c.AllowedUserIds || []);
                     loadStatus();
-                    Dashboard.hideLoadingMsg();
                 });
             });
 
-            page.querySelector('#TorviaSearchForm').addEventListener('submit', function (e) {
+            $('#TorviaSearchForm').addEventListener('submit', function (e) {
                 e.preventDefault();
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(pluginId).then(function (c) {
-                    fields.forEach(function (f) { c[f] = page.querySelector('#' + f).value.trim(); });
+                    fields.forEach(function (f) { c[f] = $('#' + f).value.trim(); });
                     c.DailyLimitPerUser = parseInt(c.DailyLimitPerUser, 10) || 0;
-                    checks.forEach(function (f) { c[f] = page.querySelector('#' + f).checked; });
+                    checks.forEach(function (f) { c[f] = $('#' + f).checked; });
                     c.AllowedUserIds = Array.prototype.slice.call(page.querySelectorAll('.tsUser'))
                         .filter(function (x) { return x.checked && !x.disabled; })
                         .map(function (x) { return x.getAttribute('data-id'); });
@@ -357,24 +582,22 @@
             });
         })();
     </script>
+
+    <!-- ============ Tabs ============ -->
     <script type="text/javascript">
         (function () {
             var page = document.querySelector('#PhoenicxTorBoxPage');
             function show(name) {
                 page.querySelectorAll('.tvPane').forEach(function (p) { p.style.display = p.getAttribute('data-pane') === name ? '' : 'none'; });
-                page.querySelectorAll('.tvTab').forEach(function (b) {
-                    var on = b.getAttribute('data-tab') === name;
-                    b.style.cssText = 'background:none;border:0;border-bottom:3px solid ' + (on ? '#a855f7' : 'transparent') +
-                        ';color:inherit;padding:.6em 1em;font-size:1em;font-weight:' + (on ? '700' : '400') + ';opacity:' + (on ? '1' : '.65') + ';cursor:pointer';
-                });
+                page.querySelectorAll('.tv-tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === name); });
                 try { sessionStorage.setItem('torviaTab', name); } catch (e) { }
             }
-            page.querySelectorAll('.tvTab').forEach(function (b) {
+            page.querySelectorAll('.tv-tab').forEach(function (b) {
                 b.addEventListener('click', function () { show(b.getAttribute('data-tab')); });
             });
             var start = 'main';
             try { start = sessionStorage.getItem('torviaTab') || 'main'; } catch (e) { }
-            show(start);
+            show(start === 'search' ? 'search' : 'main');
         })();
     </script>
 </div>
