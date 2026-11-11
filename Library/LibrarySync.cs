@@ -327,23 +327,55 @@ public sealed class LibrarySync
             .Where(p => TorBoxClient.SubtitleExt.Contains(Path.GetExtension(p).TrimStart('.')))
             .ToHashSet(StringComparer.Ordinal);
 
+        var toRemove = existing.Where(p => !desired.ContainsKey(p)).ToList();
+
+        // Jellyfin takes a title's "date added" from its file's date. A file that is only moved
+        // or renamed here (a corrected title, a second version, another tag) keeps the date of
+        // the file it replaces, so the title doesn't jump to the top of "Recently added".
+        var movedFrom = new Dictionary<string, DateTime>(StringComparer.Ordinal);
+        foreach (var old in toRemove)
+        {
+            if (SafeRead(old) is { Length: > 0 } link && SafeTime(old) is { } stamp
+                && (!movedFrom.TryGetValue(link, out var known) || stamp < known))
+            {
+                movedFrom[link] = stamp;
+            }
+        }
+
         foreach (var (path, content) in desired)
         {
             ct.ThrowIfCancellationRequested();
-            if (existing.Contains(path) && SafeRead(path) == content)
+            var isNew = !existing.Contains(path);
+            if (!isNew && SafeRead(path) == content)
             {
                 continue;
             }
 
+            // An existing file whose link changed keeps its date too (two seconds later, which
+            // is enough for Jellyfin to notice the change).
+            var keep = isNew
+                ? (movedFrom.TryGetValue(content, out var origin) ? origin : (DateTime?)null)
+                : SafeTime(path)?.AddSeconds(2);
+
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             await File.WriteAllTextAsync(path, content, new UTF8Encoding(false), ct).ConfigureAwait(false);
-            if (!existing.Contains(path))
+            if (keep is { } date)
+            {
+                try
+                {
+                    File.SetLastWriteTimeUtc(path, date);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    _log.LogDebug("Torvia: could not keep the date of {Path}: {Msg}", path, ex.Message);
+                }
+            }
+
+            if (isNew)
             {
                 status.Added++;
             }
         }
-
-        var toRemove = existing.Where(p => !desired.ContainsKey(p)).ToList();
 
         // A TorBox hiccup (empty or half list) must not wipe the library. A real big clean-up
         // on TorBox shows the same smaller list again at the next sync, and is applied then.
@@ -674,6 +706,19 @@ public sealed class LibrarySync
         {
             Directory.Delete(d, true);
             d = Path.GetDirectoryName(d);
+        }
+    }
+
+    private static DateTime? SafeTime(string path)
+    {
+        try
+        {
+            var t = File.GetLastWriteTimeUtc(path);
+            return t.Year > 1980 ? t : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null;
         }
     }
 

@@ -15,7 +15,7 @@ public static class NameParser
     private const RegexOptions Ic = RegexOptions.IgnoreCase | RegexOptions.Compiled;
 
     // Only real file extensions: a name ending in ".2023" or ".S01" keeps its year / season.
-    private static readonly Regex Ext = new(@"\.(mkv|mp4|avi|m4v|mov|wmv|ts|m2ts|webm|mpg|mpeg|flv|vob|srt|ass|ssa|vtt|sub|smi|idx)$", Ic);
+    private static readonly Regex Ext = new(@"\.(mkv|mp4|avi|m4v|mov|wmv|ts|m2ts|mts|webm|mpg|mpeg|flv|vob|divx|rmvb|3gp|ogv|ogm|asf|f4v|iso|srt|ass|ssa|vtt|sub|smi|idx)$", Ic);
     private static readonly Regex SitePrefix = new(@"^\s*(www\.)?[A-Za-z0-9\-]+\.(com|org|net|in|ws|xyz|cc|me|to|se|li|pw|lol|fans|io|co|ms|bz|ink|day|life|fyi|win|vip|art|mx|zip|boo|dad|bike|cat|rs|sx|ph|tv|gs|ac|ltd|uk|re|lc|nz|at|am|company|mov|movie|movies|dev|site|online|club|top|pro|shop|store|app|live|cfd|sbs|hair|beauty|skin|quest|icu|cyou|homes|autos|motorcycles|yachts|mom|rodeo)\s*[-–_]+\s*", Ic);
     // Any site name starting with "www", whatever its ending: "www.5MovieRulz.company - ",
     // "www 1TamilMV ws - ", "www_site_xyz - ".
@@ -49,9 +49,9 @@ public static class NameParser
         @"(?<![A-Za-z0-9])(2160p|1080p|1080i|720p|576p|480p|4k|uhd|web[ ._\-]?dl|web[ ._\-]?rip|bluray|blu[ ._\-]ray|brrip|bdrip|bd[ ._\-]?rip|hdrip|dvdrip|dvdscr|hdtv|hdcam|camrip|predvd|x264|x265|h[ ._]?264|h[ ._]?265|hevc|remux|proper|repack|extended|unrated|directors[ ._]cut|imax|hdr10|hdr|dovi|10bit|8bit|amzn|dsnp|hmax|atvp|zee5|jhs|ddp?\d?[ ._]?\d?|aac|dts|truehd|atmos|esub|esubs|dual[ ._\-]audio|multi[ ._\-]audio|uncut|tamil|telugu|hindi|malayalam|kannada|eng|true)(?![A-Za-z0-9])",
         Ic);
 
-    // Release words that are also normal title words ("Based on a True Story"). Before a year they
-    // are part of the title; release names put them after it.
-    private static readonly Regex SoftJunk = new(@"^(true|proper|extended|unrated|uncut|imax)$", Ic);
+    // "True" is a release word ("TRUE WEB-DL") but also a normal title word ("Based on a True
+    // Story"). Before a year it is part of the title; release names put it after the year.
+    private static readonly Regex SoftJunk = new(@"^true$", Ic);
 
     // What may stand between a title's own number and the real year: "Blade.Runner.2049.2017".
     private static readonly Regex YearGap = new(@"^[ ._\-()\[\]]+$", RegexOptions.Compiled);
