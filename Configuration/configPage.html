@@ -140,6 +140,9 @@
                             <button type="button" class="tv-btn primary" id="ptbSync">⟳ Sync now</button>
                             <span class="tv-note" id="ptbSyncNote"></span>
                         </div>
+                        <div class="tv-row" style="margin-top:.7em">
+                            <button type="button" class="tv-btn" style="font-size:.85em;padding:.4em .8em" id="ptbRefreshCopy" title="A link that starts a sync when opened in any browser, without signing in. Keep it private.">🔗 Copy refresh link</button>
+                        </div>
                     </div>
                 </div>
 
@@ -337,6 +340,8 @@
             var fields = ['TorBoxApiKey', 'PublicServerUrl', 'TimeZone', 'LibraryPath', 'NameFixes'];
             var checks = ['DirectToClients', 'NearestServerPerViewer', 'FoldersByTag', 'IncludeUsenet', 'IncludeWebDownloads'];
 
+            var refreshKey = '';
+
             function $(sel) { return page.querySelector(sel); }
             function esc(s) {
                 return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -398,6 +403,8 @@
                     $('#ptbSkipped').innerHTML = skipped.length
                         ? '<details style="margin-top:.8em"><summary class="tv-mute" style="cursor:pointer">' + skipped.length + ' file name(s) could not be read — fix them with Name fixes below</summary><pre style="white-space:pre-wrap;font-size:.85em">' + esc(skipped.join('\n')) + '</pre></details>'
                         : '';
+
+                    refreshKey = s.refreshKey || '';
 
                     var st = s.stats, box = $('#ptbStats');
                     if (st) {
@@ -470,6 +477,17 @@
                 getJson('PhoenicxTorBox/Test').then(function (r) {
                     note('#ptbTestNote', (r.ok ? '✓ ' : '✕ ') + r.message + (r.ok ? '' : ' (save the key first)'), r.ok ? 'ok' : 'bad');
                 }, function () { note('#ptbTestNote', '✕ Could not check the key.', 'bad'); });
+            });
+
+            // The refresh link uses the public address when one is set, otherwise the address of this page.
+            $('#ptbRefreshCopy').addEventListener('click', function () {
+                var b = $('#ptbRefreshCopy');
+                if (!refreshKey) { return; }
+                var pub = ($('#PublicServerUrl').value || '').trim().replace(/\/+$/, '');
+                var link = (pub ? pub + '/PhoenicxTorBox/Refresh' : ApiClient.getUrl('PhoenicxTorBox/Refresh')) + '?key=' + refreshKey;
+                (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(function () {
+                    b.textContent = 'Copied ✓'; setTimeout(function () { b.textContent = '🔗 Copy refresh link'; }, 1500);
+                }, function () { window.prompt('Copy this link:', link); });
             });
 
             $('#ptbSync').addEventListener('click', function () {

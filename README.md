@@ -195,6 +195,7 @@ a restart. To update now: **Catalog → Torvia → pick the newest version → I
 | Your time zone | For the Search daily limit and the monthly bandwidth counter (e.g. `Asia/Kolkata`). | the server's clock |
 | Library folder | Where the library files go. | Jellyfin's data folder |
 | Sync interval | How often TorBox is checked. | every 3 hours |
+| Copy refresh link | A private link that starts a sync when opened in any browser, without signing in. Handy as a phone bookmark. | - |
 | Play straight from TorBox | Apps stream from TorBox directly. | on |
 | Nearest TorBox server for each viewer | Each viewer gets the TorBox server closest to them. | on |
 | A folder for each TorBox tag | One library per tag. | on |

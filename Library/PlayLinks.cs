@@ -26,6 +26,9 @@ public static class PlayLinks
         return Convert.ToHexString(hash, 0, 12).ToLowerInvariant();
     }
 
+    /// <summary>The key in the refresh link (settings page): lets its holder start a sync, nothing else.</summary>
+    public static string RefreshKey() => Sign("refresh", 0, 0);
+
     /// <summary>Checks a signature.</summary>
     public static bool Verify(string t, long itemId, long fileId, string? sig) =>
         !string.IsNullOrEmpty(sig)
