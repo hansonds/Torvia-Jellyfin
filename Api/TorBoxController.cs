@@ -161,7 +161,15 @@ public class TorBoxController : ControllerBase
     {
         try
         {
-            return new { ok = true, message = await _torbox.TestAsync(ct).ConfigureAwait(false) };
+            var a = await _torbox.AccountAsync(ct).ConfigureAwait(false);
+            return new
+            {
+                ok = true,
+                message = a.Email != null ? "Connected as " + a.Email : "Connected",
+                plan = a.Plan,
+                expiresUtc = a.ExpiresUtc,
+                autoRenews = a.AutoRenews,
+            };
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

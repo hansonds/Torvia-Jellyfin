@@ -110,8 +110,10 @@ public sealed class TorBoxClient
         return c;
     }
 
-    /// <summary>Checks the key and returns a short "Connected as ..." text.</summary>
-    public async Task<string> TestAsync(CancellationToken ct)
+    /// <summary>
+    /// The TorBox account behind the saved key: email, plan name, and when the plan runs out.
+    /// </summary>
+    public async Task<TorBoxAccount> AccountAsync(CancellationToken ct)
     {
         var key = Key;
         if (key.Length == 0)
@@ -121,13 +123,31 @@ public sealed class TorBoxClient
 
         using var c = NewClient(key);
         using var doc = await GetJsonAsync(c, $"{Base}/user/me", ct).ConfigureAwait(false);
-        if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object
-            && data.TryGetProperty("email", out var email) && email.ValueKind == JsonValueKind.String)
+        var acc = new TorBoxAccount();
+        if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
         {
-            return "Connected as " + email.GetString();
+            return acc;
         }
 
-        return "Connected";
+        if (data.TryGetProperty("email", out var email) && email.ValueKind == JsonValueKind.String)
+        {
+            acc.Email = email.GetString();
+        }
+
+        if (data.TryGetProperty("plan", out var plan) && plan.ValueKind == JsonValueKind.Number && plan.TryGetInt32(out var n))
+        {
+            // TorBox's own plan numbers.
+            acc.Plan = n switch { 0 => "Free", 1 => "Essential", 2 => "Pro", 3 => "Standard", _ => "Plan " + n };
+        }
+
+        if (data.TryGetProperty("premium_expires_at", out var exp) && exp.ValueKind == JsonValueKind.String
+            && DateTimeOffset.TryParse(exp.GetString(), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeUniversal, out var when))
+        {
+            acc.ExpiresUtc = when.UtcDateTime;
+        }
+
+        acc.AutoRenews = data.TryGetProperty("is_subscribed", out var sub) && sub.ValueKind == JsonValueKind.True;
+        return acc;
     }
 
     /// <summary>All finished video files from torrents, usenet and web downloads.</summary>
@@ -442,4 +462,20 @@ public sealed class TorBoxClient
 
         return v.ValueKind == JsonValueKind.String && long.TryParse(v.GetString(), out value);
     }
+}
+
+/// <summary>What TorBox says about the account behind the API key.</summary>
+public sealed class TorBoxAccount
+{
+    /// <summary>Gets or sets the account email.</summary>
+    public string? Email { get; set; }
+
+    /// <summary>Gets or sets the plan name (Free, Essential, Standard, Pro).</summary>
+    public string? Plan { get; set; }
+
+    /// <summary>Gets or sets when the paid plan runs out (UTC).</summary>
+    public DateTime? ExpiresUtc { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether the plan renews by itself.</summary>
+    public bool AutoRenews { get; set; }
 }

@@ -162,6 +162,7 @@
                                 <input is="emby-input" type="password" id="TorBoxApiKey" label="TorBox API key" autocomplete="off" />
                                 <div class="fieldDescription">torbox.app → Settings → API key.</div>
                             </div>
+                            <div id="ptbPlan" class="tv-split" style="margin:0 0 1em;display:none"></div>
                             <div class="tv-row">
                                 <button type="button" class="tv-btn" id="ptbTest">Test key</button>
                                 <span class="tv-note" id="ptbTestNote"></span>
@@ -454,6 +455,7 @@
                     Dashboard.hideLoadingMsg();
                 });
                 loadStatus();
+                loadPlan();
             });
 
             $('#PhoenicxTorBoxForm').addEventListener('submit', function (e) {
@@ -466,6 +468,7 @@
                     ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
                         Dashboard.processPluginConfigurationUpdateResult(result);
                         loadStatus();
+                        loadPlan();
                     });
                 });
                 return false;
@@ -476,10 +479,34 @@
                 try { $('#TimeZone').value = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (x) { }
             });
 
+            // The TorBox plan and when it runs out, under the API key.
+            function showPlan(r) {
+                var box = $('#ptbPlan');
+                if (!r || !r.ok || !r.plan) { box.style.display = 'none'; return; }
+                var html = '<span>Plan</span><b>' + esc(r.plan) + '</b>';
+                if (r.expiresUtc && r.plan !== 'Free') {
+                    var d = new Date(r.expiresUtc);
+                    var days = Math.ceil((d.getTime() - Date.now()) / 86400000);
+                    var left = days < 0 ? 'expired' : days === 0 ? 'today' : days === 1 ? '1 day left' : days + ' days left';
+                    var color = days < 0 ? '#fca5a5' : days <= 7 ? '#fcd34d' : '';
+                    html += '<span>' + (days < 0 ? 'Expired' : r.autoRenews ? 'Renews' : 'Expires') + '</span>' +
+                        '<b' + (color ? ' style="color:' + color + '"' : '') + '>' +
+                        esc(d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })) +
+                        (days >= 0 ? ' <span style="font-weight:400;opacity:.8">(' + left + ')</span>' : '') + '</b>';
+                }
+                box.innerHTML = html;
+                box.style.display = '';
+            }
+
+            function loadPlan() {
+                getJson('PhoenicxTorBox/Test').then(showPlan, function () { showPlan(null); });
+            }
+
             $('#ptbTest').addEventListener('click', function () {
                 note('#ptbTestNote', 'Checking…');
                 getJson('PhoenicxTorBox/Test').then(function (r) {
                     note('#ptbTestNote', (r.ok ? '✓ ' : '✕ ') + r.message + (r.ok ? '' : ' (save the key first)'), r.ok ? 'ok' : 'bad');
+                    showPlan(r);
                 }, function () { note('#ptbTestNote', '✕ Could not check the key.', 'bad'); });
             });
 
