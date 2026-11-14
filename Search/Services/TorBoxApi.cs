@@ -113,6 +113,100 @@ public class TorBoxApi
         throw new InvalidOperationException(Detail(root) ?? "TorBox did not add it.");
     }
 
+    /// <summary>
+    /// Adds a user's own magnet link or .torrent file, cached or not (TorBox downloads it if it has
+    /// to). With a name, TorBox shows it under that name; without, it keeps the torrent's own name.
+    /// Returns the torrent id, or null when TorBox only put it in its waiting queue.
+    /// </summary>
+    public async Task<long?> CreateOwnAsync(string? magnet, byte[]? torrentFile, string? name, CancellationToken ct)
+    {
+        using var form = new MultipartFormDataContent
+        {
+            { new StringContent("false"), "add_only_if_cached" },
+            { new StringContent("false"), "allow_zip" },
+        };
+        if (torrentFile != null)
+        {
+            var file = new ByteArrayContent(torrentFile);
+            file.Headers.ContentType = new MediaTypeHeaderValue("application/x-bittorrent");
+            form.Add(file, "file", "upload.torrent");
+        }
+        else
+        {
+            form.Add(new StringContent(magnet ?? string.Empty), "magnet");
+        }
+
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            form.Add(new StringContent(name), "name");
+        }
+
+        var c = Client();
+        using var res = await c.PostAsync($"{Base}/createtorrent", form, ct).ConfigureAwait(false);
+        using var doc = await ReadAsync(res, ct).ConfigureAwait(false);
+        var root = doc.RootElement;
+        if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Object)
+        {
+            if (data.TryGetProperty("torrent_id", out var id) && id.ValueKind == JsonValueKind.Number)
+            {
+                return id.GetInt64();
+            }
+
+            if (data.TryGetProperty("queued_id", out var q) && q.ValueKind == JsonValueKind.Number)
+            {
+                return null;
+            }
+        }
+
+        throw new InvalidOperationException(Detail(root) ?? "TorBox did not add it.");
+    }
+
+    /// <summary>
+    /// How far a download is: Finished, Percent (0-100). Null when TorBox can't say right now;
+    /// Gone when it is no longer in the account.
+    /// </summary>
+    public async Task<(bool Gone, bool Finished, int Percent)?> ProgressAsync(long id, CancellationToken ct)
+    {
+        try
+        {
+            using var res = await Client().GetAsync($"{Base}/mylist?id={id}&bypass_cache=true", ct).ConfigureAwait(false);
+            var code = (int)res.StatusCode;
+            if (code is 401 or 403 or 408 or 429)
+            {
+                return null;
+            }
+
+            var body = await res.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            using var doc = JsonDocument.Parse(body);
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            if (!res.IsSuccessStatusCode
+                || (root.TryGetProperty("success", out var ok) && ok.ValueKind == JsonValueKind.False)
+                || !root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+            {
+                return (true, false, 0);
+            }
+
+            static bool True(JsonElement e, string n) => e.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.True;
+            var finished = True(data, "download_finished") || True(data, "download_present") || True(data, "cached");
+            var progress = data.TryGetProperty("progress", out var pr) && pr.ValueKind == JsonValueKind.Number ? pr.GetDouble() : 0;
+            if (progress <= 1)
+            {
+                progress *= 100;
+            }
+
+            return (false, finished, (int)Math.Clamp(progress, 0, 100));
+        }
+        catch (Exception e) when (e is HttpRequestException or JsonException || (e is TaskCanceledException && !ct.IsCancellationRequested))
+        {
+            return null;
+        }
+    }
+
     /// <summary>Sets the tags (and keeps the name).</summary>
     public async Task SetTagsAsync(long id, IEnumerable<string> tags, CancellationToken ct)
     {

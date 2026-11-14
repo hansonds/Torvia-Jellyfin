@@ -106,6 +106,10 @@ even on a small server.
   - shows **who is signed in** (and admin), how many adds are left today, and a **Sign out** link
     (signing out here doesn't sign you out of the Jellyfin app);
   - **My adds** (each user's own list, removable) / **All adds** for admins.
+- 🔗 **Add your own link** — paste a magnet link or choose a .torrent file, pick which movie or
+  show it is (TMDB search) and a tag. If TorBox has it cached it is ready at once; if not, TorBox
+  downloads it and it appears in Jellyfin by itself when the download is finished. The list of
+  adds shows the download progress. Can be turned off for non-admin users.
 - 👥 **You decide who can use it** — every user, or only the users you tick; admins always can.
   **Daily limit** per user (admins unlimited).
 - 📱 **Apps can use it too** — e.g. PHOENIXA's *Search & Add* button. API: [SEARCH-API.md](SEARCH-API.md).
@@ -218,6 +222,7 @@ be read.
 | Tags / default movie tag / default TV tag | Tags users can pick when adding — use the same tags as your Torvia tag folders. | `movies,tv-shows` |
 | Give a direct stream link after adding | For apps using the API (e.g. PHOENIXA): they can offer *Play now* before Jellyfin has the title. The web page doesn't show it. | on |
 | Show CAM/TS releases | Marked ⚠️ and listed last. | on |
+| Users can add their own magnet link or torrent file | The "Add a link" tab. Uncached links make TorBox download them (uses a download slot). Admins always can. | on |
 
 The tab also shows whether Search is ready, the web page link, and the recent adds.
 

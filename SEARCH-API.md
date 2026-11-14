@@ -129,6 +129,21 @@ for the type is used). The hash must come from a Releases list fetched in the la
 **400**: `{ "ok": false, "message": "…" }` — show `message` (daily limit reached, list too old, no longer cached…).
 This call can take up to ~25 seconds (it waits for TorBox to list the files to make the stream link).
 
+## 5b. `POST /TorviaSearch/AddOwn` — the user's own magnet link or .torrent file
+
+Only offer this when Status has `"ownTorrents": true`. Let the user paste a magnet link or choose a
+.torrent file, pick the title with Search (step 2), and choose a tag.
+
+Body: `{ "magnet": "magnet:?xt=urn:btih:…", "type": "movie", "tmdbId": 123, "tag": "movies" }`,
+or with `"file": "<the .torrent file, base64>"` in place of `magnet` (5 MB at most).
+
+**200**: the same shape as Add, plus `"downloading": true` when TorBox doesn't have it cached and
+is downloading it. Then it appears in Jellyfin by itself when the download is finished (no stream
+link, and InLibrary stays 404 until then). The Adds list has `downloadPercent` (0–100) for such
+entries while this server keeps watching them; `null` otherwise.
+
+**400**: `{ "ok": false, "message": "…" }` — show `message`.
+
 ## 6. `GET /TorviaSearch/InLibrary/{type}/{tmdbId}`
 
 Poll every ~10 s after an add (for up to ~3 minutes). **404** until Torvia has synced it, then

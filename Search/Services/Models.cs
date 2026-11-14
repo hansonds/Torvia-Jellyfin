@@ -147,9 +147,31 @@ public sealed class AddRequest
     public string? Tag { get; set; }
 }
 
+/// <summary>Body of POST /TorviaSearch/AddOwn: a user's own magnet link or .torrent file.</summary>
+public sealed class OwnAddRequest
+{
+    /// <summary>Gets or sets the magnet link (or leave empty and send File).</summary>
+    public string? Magnet { get; set; }
+
+    /// <summary>Gets or sets the .torrent file, base64.</summary>
+    public string? File { get; set; }
+
+    /// <summary>Gets or sets "movie" or "tv".</summary>
+    public string Type { get; set; } = "movie";
+
+    /// <summary>Gets or sets the TMDB id of the title the user picked.</summary>
+    public int TmdbId { get; set; }
+
+    /// <summary>Gets or sets the tag.</summary>
+    public string? Tag { get; set; }
+}
+
 /// <summary>Result of an add.</summary>
 public sealed class AddResult
 {
+    /// <summary>Gets or sets a value indicating whether TorBox still has to download it (own links only).</summary>
+    public bool Downloading { get; set; }
+
     /// <summary>Gets or sets a value indicating whether it worked.</summary>
     public bool Ok { get; set; }
 

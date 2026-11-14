@@ -431,6 +431,225 @@ public class SearchService
     }
 
     /// <summary>
+    /// Adds a user's own magnet link or .torrent file under the title they picked from TMDB.
+    /// If TorBox doesn't have it cached it downloads it, and Torvia syncs when that is done.
+    /// </summary>
+    public async Task<AddResult> AddOwnAsync(Guid userId, string userName, bool isAdmin, OwnAddRequest req, CancellationToken ct)
+    {
+        var cfg = Plugin.Instance!.Configuration;
+        if (!isAdmin && !cfg.AllowOwnTorrents)
+        {
+            return new AddResult { Message = "Adding your own links isn't turned on. Ask the server owner." };
+        }
+
+        // What was sent: a .torrent file or a magnet link.
+        byte[]? file = null;
+        string? hash;
+        string? ownName;
+        if (!string.IsNullOrWhiteSpace(req.File))
+        {
+            try
+            {
+                var b64 = req.File.Trim();
+                var comma = b64.IndexOf("base64,", StringComparison.OrdinalIgnoreCase);
+                file = Convert.FromBase64String(comma >= 0 ? b64[(comma + 7)..] : b64);
+            }
+            catch (FormatException)
+            {
+                return new AddResult { Message = "That file couldn't be read. Choose the .torrent file again." };
+            }
+
+            if (file.Length > 5 * 1024 * 1024 || OwnTorrent.ReadTorrentFile(file) is not { } info)
+            {
+                return new AddResult { Message = "That isn't a torrent file. Choose a file ending in .torrent." };
+            }
+
+            hash = info.Hash;
+            ownName = info.Name;
+        }
+        else
+        {
+            hash = OwnTorrent.HashFromMagnet(req.Magnet);
+            ownName = OwnTorrent.NameFromMagnet(req.Magnet);
+            if (hash == null)
+            {
+                return new AddResult { Message = "That isn't a magnet link. It should start with magnet:?xt=urn:btih:" };
+            }
+        }
+
+        var type = req.Type == "tv" ? "tv" : "movie";
+        var details = req.TmdbId > 0 ? await DetailsAsync(type, req.TmdbId, ct).ConfigureAwait(false) : null;
+        if (details == null)
+        {
+            return new AddResult { Message = "Pick the movie or show this link is for first." };
+        }
+
+        var title = details.Title;
+        var tag = string.IsNullOrWhiteSpace(req.Tag) ? (type == "tv" ? cfg.TvTag : cfg.MovieTag) : req.Tag.Trim();
+        if (!TagList().Contains(tag, StringComparer.OrdinalIgnoreCase))
+        {
+            return new AddResult { Message = "That tag isn't allowed." };
+        }
+
+        await _addLock.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (Remaining(userId, isAdmin) == 0)
+            {
+                return new AddResult { Message = $"You've reached today's limit of {cfg.DailyLimitPerUser} adds. Try again tomorrow.", RemainingToday = 0 };
+            }
+
+            // A movie is named after its title, so Torvia files it under the right film. A show
+            // keeps the torrent's own name, which is where Torvia reads seasons and episodes from.
+            var titleName = title.Year is { } y ? $"{title.Title} ({y})" : title.Title;
+            var result = new AddResult { Tag = tag, Name = type == "movie" ? titleName : (ownName ?? titleName) };
+
+            var cached = (await _torbox.CheckCachedAsync(new[] { hash }, ct).ConfigureAwait(false)).ContainsKey(hash);
+            var existing = await _torbox.FindByHashAsync(hash, ct).ConfigureAwait(false);
+            long id;
+            if (existing is { } ex)
+            {
+                id = ex.Id;
+                result.AlreadyInTorBox = true;
+                if (!ex.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase))
+                {
+                    await _torbox.SetTagsAsync(id, ex.Tags.Append(tag), ct).ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                var made = await _torbox.CreateOwnAsync(file == null ? req.Magnet!.Trim() : null, file, type == "movie" ? titleName : null, ct).ConfigureAwait(false);
+                if (made is not { } newId)
+                {
+                    return new AddResult { Message = "TorBox has no free download slot, so it put this in its waiting queue. It can't be tagged from here: once TorBox starts it, add the tag on torbox.app, or remove it there and try again later." };
+                }
+
+                id = newId;
+                try
+                {
+                    await _torbox.SetTagsAsync(id, new[] { tag }, ct).ConfigureAwait(false);
+                }
+                catch (Exception e) when (e is not OperationCanceledException)
+                {
+                    _log.LogWarning("Torvia Search: could not tag torrent {Id}, taking it out again: {Msg}", id, e.Message);
+                    try
+                    {
+                        await _torbox.DeleteAsync(id, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception)
+                    {
+                        // Nothing more to do here.
+                    }
+
+                    return new AddResult { Message = "TorBox added it but couldn't tag it, so it was taken out again. Try again in a minute." };
+                }
+            }
+
+            // Ready at once when TorBox has it cached (or had it already and finished it).
+            var state = cached ? null : await _torbox.ProgressAsync(id, ct).ConfigureAwait(false);
+            var ready = cached || state?.Finished == true;
+            result.TorrentId = id;
+            result.Ok = true;
+            result.Downloading = !ready;
+            if (ready)
+            {
+                result.SyncStarted = StartTorviaSync();
+                result.Message = (result.AlreadyInTorBox ? "Already in TorBox" : "Added to TorBox") + $" with tag “{tag}”. It will appear in Jellyfin in a minute or two.";
+            }
+            else
+            {
+                WatchDownload(id, state?.Percent ?? 0);
+                result.Message = (result.AlreadyInTorBox ? "Already in TorBox" : "Added to TorBox") + $" with tag “{tag}”. TorBox doesn't have this one ready, so it is downloading it now. It will appear in Jellyfin by itself when the download is finished.";
+            }
+
+            var rec = new AddRecord
+            {
+                UserId = userId.ToString("N"),
+                UserName = userName,
+                When = DateTime.UtcNow,
+                Type = type,
+                TmdbId = title.TmdbId,
+                Title = title.Title,
+                Year = title.Year,
+                Poster = title.Poster,
+                Label = file == null ? "Magnet link" : "Torrent file",
+                Tag = tag,
+                Name = result.Name!,
+                Release = ownName ?? result.Name!,
+                Hash = hash,
+                TorrentId = id,
+                AlreadyInTorBox = result.AlreadyInTorBox,
+            };
+            _store.Add(rec);
+            result.RecordId = rec.Id;
+            result.RemainingToday = Remaining(userId, isAdmin);
+
+            _log.LogInformation("Torvia Search: {User} added their own link {Name} [{Tag}] (torrent {Id}, {State})", userName, result.Name, tag, id, ready ? "ready" : "downloading");
+            return result;
+        }
+        finally
+        {
+            _addLock.Release();
+        }
+    }
+
+    // Downloads TorBox is still fetching (torrent id → percent), so the list can show progress.
+    private readonly ConcurrentDictionary<long, int> _downloading = new();
+
+    /// <summary>Percent downloaded while TorBox is still fetching this torrent; null once it is ready (or unknown).</summary>
+    public int? DownloadPercent(long torrentId) => _downloading.TryGetValue(torrentId, out var p) ? p : null;
+
+    /// <summary>
+    /// Checks a download once a minute (for up to three days) and syncs Torvia as soon as TorBox
+    /// has finished it. After a server restart the normal scheduled sync picks it up instead.
+    /// </summary>
+    private void WatchDownload(long id, int percent)
+    {
+        if (!_downloading.TryAdd(id, percent))
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                for (var i = 0; i < 3 * 24 * 60; i++)
+                {
+                    await Task.Delay(TimeSpan.FromMinutes(1)).ConfigureAwait(false);
+                    var s = await _torbox.ProgressAsync(id, CancellationToken.None).ConfigureAwait(false);
+                    if (s is not { } now)
+                    {
+                        continue;
+                    }
+
+                    if (now.Gone)
+                    {
+                        return;
+                    }
+
+                    if (now.Finished)
+                    {
+                        _log.LogInformation("Torvia Search: TorBox finished downloading torrent {Id}, syncing", id);
+                        StartTorviaSync();
+                        return;
+                    }
+
+                    _downloading[id] = now.Percent;
+                }
+            }
+            catch (Exception e)
+            {
+                _log.LogWarning("Torvia Search: stopped watching torrent {Id}: {Msg}", id, e.Message);
+            }
+            finally
+            {
+                _downloading.TryRemove(id, out _);
+            }
+        });
+    }
+
+    /// <summary>
     /// Removes an add: deletes it from TorBox (unless it was there before, or someone else added it too),
     /// forgets it, and syncs Torvia so it leaves Jellyfin.
     /// </summary>

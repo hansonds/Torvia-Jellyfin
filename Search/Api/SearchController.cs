@@ -60,6 +60,7 @@ public class SearchController : ControllerBase
             remainingToday = allowed ? _svc.Remaining(id, admin) : 0,
             dailyLimit = admin ? 0 : cfg.DailyLimitPerUser,
             buttonLabel = "Search & Add",
+            ownTorrents = allowed && (admin || cfg.AllowOwnTorrents),
         });
     }
 
@@ -186,6 +187,50 @@ public class SearchController : ControllerBase
         }).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Adds the user's own magnet link or .torrent file under a title picked from TMDB:
+    /// body { "magnet": "magnet:?…" or "file": "(base64 .torrent)", "type": "movie"|"tv", "tmdbId": 123, "tag": "movies" }.
+    /// If TorBox doesn't have it cached, "downloading" is true and it appears in Jellyfin when the download is done.
+    /// </summary>
+    [HttpPost("AddOwn")]
+    [RequestSizeLimit(12 * 1024 * 1024)]
+    public async Task<ActionResult> AddOwn([FromBody] JsonElement json, CancellationToken ct)
+    {
+        if (Deny() is { } d)
+        {
+            return d;
+        }
+
+        var body = new OwnAddRequest();
+        if (json.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var p in json.EnumerateObject())
+            {
+                var text = p.Value.ValueKind == JsonValueKind.String ? p.Value.GetString() : null;
+                switch (p.Name.ToLowerInvariant())
+                {
+                    case "magnet": body.Magnet = text; break;
+                    case "file": body.File = text; break;
+                    case "type": body.Type = Norm(text); break;
+                    case "tag": body.Tag = text; break;
+                    case "tmdbid":
+                        body.TmdbId = p.Value.ValueKind == JsonValueKind.Number && p.Value.TryGetInt32(out var n) ? n
+                            : int.TryParse(text, out var m) ? m : 0;
+                        break;
+                    default: break;
+                }
+            }
+        }
+
+        var (id, admin) = Who();
+        var name = _users.GetUserById(id)?.Username ?? id.ToString("N");
+        return await Run(async () =>
+        {
+            var r = await _svc.AddOwnAsync(id, name, admin, body, ct).ConfigureAwait(false);
+            return J(r, r.Ok ? 200 : 400);
+        }).ConfigureAwait(false);
+    }
+
     /// <summary>Jellyfin item id for a TMDB id once Torvia has synced it (poll after an add). 404 until it's there.</summary>
     [HttpGet("InLibrary/{type}/{tmdbId:int}")]
     public ActionResult InLibrary([FromRoute] string type, [FromRoute] int tmdbId)
@@ -260,6 +305,7 @@ public class SearchController : ControllerBase
                 r.AlreadyInTorBox,
                 canRemove = admin || r.UserId == mine,
                 jellyfinItemId = _svc.FindInLibrary(r.Type, r.TmdbId)?.ToString("N"),
+                downloadPercent = _svc.DownloadPercent(r.TorrentId),
             }),
         });
     }

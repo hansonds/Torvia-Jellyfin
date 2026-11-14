@@ -103,6 +103,7 @@
   <h1><span>Torvia</span> · Search and Add</h1>
   <nav class="tabs" id="tabs" hidden>
     <button class="tab on" data-tab="search">Search</button>
+    <button class="tab" data-tab="own" id="ownTab" hidden>Add a link</button>
     <button class="tab" data-tab="adds" id="addsTab">My adds</button>
   </nav>
   <div class="who" id="who"></div>
@@ -253,6 +254,7 @@
       if (!s.ready) { app.innerHTML = '<div class="msg err">Search &amp; Add isn\'t set up yet (API keys missing in the plugin settings).</div>'; return; }
       document.getElementById('tabs').hidden = false;
       document.getElementById('addsTab').textContent = s.isAdmin ? 'All adds' : 'My adds';
+      document.getElementById('ownTab').hidden = !s.ownTorrents;
       showSearch('');
     }).catch(function (e) {
       if (e.status === 401) return; // already handled
@@ -268,7 +270,8 @@
   }
   Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) {
     b.onclick = function () {
-      if (b.getAttribute('data-tab') === 'adds') showAdds(''); else showSearch(lastQuery);
+      var t = b.getAttribute('data-tab');
+      if (t === 'adds') showAdds(''); else if (t === 'own') showOwn(); else showSearch(lastQuery);
     };
   });
 
@@ -295,6 +298,7 @@
             (r.poster ? '<img loading="lazy" src="' + esc(r.poster) + '" alt="">' : '<div class="noimg"></div>') +
             '<div class="info"><div class="t">' + esc(r.title) + ' <span style="color:var(--mute);font-weight:400">' + (r.year || '') + '</span></div>' +
             '<div class="chips" style="margin:.35rem 0">' + chip(r.type === 'tv' ? 'TV' : 'Movie') + chip(r.label, 'tv') + chip(r.quality) + chip(r.size) + chip(r.tag) +
+            (r.downloadPercent != null ? chip('TorBox is downloading · ' + r.downloadPercent + '%', 'cam') : '') +
             (r.jellyfinItemId ? chip('In Jellyfin', 'okc') : '') + (r.alreadyInTorBox ? chip('Was already in TorBox') : '') + '</div>' +
             '<div class="name">' + (j.all ? '<b style="color:var(--text)">' + esc(r.userName) + '</b> · ' : '') + esc(when.toLocaleString()) + '<br>' + esc(r.release) + '</div></div>' +
             '<div class="acts">' +
@@ -339,6 +343,88 @@
       b.disabled = false; b.classList.remove('sure'); b.textContent = 'Remove';
       msg.innerHTML = '<div class="msg err">' + esc((e.body && e.body.message) || e.message) + '</div>';
     });
+  }
+
+  // ---- Add a link: your own magnet link or .torrent file, filed under a title from TMDB ----
+  function showOwn() {
+    setTab('own');
+    var picked = null, fileData = null;
+    app.innerHTML =
+      '<div class="hint" style="margin-top:0">Have your own magnet link or .torrent file? Add it here, then choose which movie or show it is and a tag. ' +
+      'If TorBox already has it, it is ready at once; if not, TorBox downloads it first and it appears in Jellyfin when that is done.</div>' +
+      '<div class="filters"><b>1 · The link or file</b>' +
+      '<div class="bar" style="margin-top:.6rem"><input id="mg" placeholder="Paste a magnet link (magnet:?xt=urn:btih:…)" autocomplete="off"></div>' +
+      '<div class="row" style="margin-bottom:0"><span style="color:var(--mute)">or</span>' +
+      '<button type="button" class="ghost" id="pickFile">Choose a .torrent file</button><input type="file" id="tf" accept=".torrent,application/x-bittorrent" hidden>' +
+      '<span id="fname" style="color:var(--mute);overflow-wrap:anywhere"></span></div></div>' +
+      '<div class="filters"><b>2 · Which movie or show is it?</b>' +
+      '<div id="pickBox"><form class="bar" id="of" style="margin-top:.6rem"><input id="oq" placeholder="Movie or show name, TMDB number or link, or IMDb ID (tt…)"><button type="submit" class="ghost">Search</button></form>' +
+      '<div id="ores" style="margin-top:.8rem"></div></div><div id="picked" hidden></div></div>' +
+      '<div class="filters"><b>3 · Tag</b><div class="row" style="margin-bottom:0"><select id="otag">' +
+      (status.tags || []).map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + '</option>'; }).join('') +
+      '</select><button id="oadd" disabled>Add to TorBox</button></div></div><div id="omsg"></div>';
+
+    var mg = document.getElementById('mg'), tf = document.getElementById('tf'), add = document.getElementById('oadd');
+    function ready() { add.disabled = !(picked && (fileData || mg.value.trim())); }
+    mg.oninput = function () { if (mg.value.trim()) { fileData = null; tf.value = ''; document.getElementById('fname').textContent = ''; } ready(); };
+    document.getElementById('pickFile').onclick = function () { tf.click(); };
+    tf.onchange = function () {
+      var f = tf.files && tf.files[0];
+      if (!f) return;
+      if (f.size > 5 * 1024 * 1024) { document.getElementById('fname').textContent = 'That file is too big to be a torrent file.'; return; }
+      var fr = new FileReader();
+      fr.onload = function () { fileData = String(fr.result); mg.value = ''; document.getElementById('fname').textContent = f.name; ready(); };
+      fr.readAsDataURL(f);
+    };
+
+    function pick(t) {
+      picked = t;
+      document.getElementById('pickBox').hidden = true;
+      var box = document.getElementById('picked');
+      box.hidden = false;
+      box.innerHTML = '<div class="add" style="margin-bottom:0">' + (t.poster ? '<img src="' + esc(t.poster) + '" alt="">' : '<div class="noimg"></div>') +
+        '<div class="info"><div class="t">' + esc(t.title) + ' <span style="color:var(--mute);font-weight:400">' + (t.year || '') + '</span></div>' +
+        '<div class="chips" style="margin:.35rem 0">' + chip(t.type === 'tv' ? 'TV show' : 'Movie') + '</div></div>' +
+        '<div class="acts"><button type="button" class="ghost" id="chg">Change</button></div></div>';
+      document.getElementById('chg').onclick = function () { picked = null; box.hidden = true; document.getElementById('pickBox').hidden = false; ready(); };
+      var want = t.type === 'tv' ? status.tvTag : status.movieTag, sel = document.getElementById('otag');
+      Array.prototype.forEach.call(sel.options, function (o) { if (want && o.value.toLowerCase() === String(want).toLowerCase()) sel.value = o.value; });
+      ready();
+    }
+
+    document.getElementById('of').onsubmit = function (e) {
+      e.preventDefault();
+      var q = document.getElementById('oq').value.trim(), res = document.getElementById('ores');
+      if (!q) return;
+      res.innerHTML = loading('Searching…');
+      call('GET', 'TorviaSearch/Search?query=' + encodeURIComponent(q)).then(function (j) {
+        var list = j.results || [];
+        if (!list.length) { res.innerHTML = '<div class="msg">Nothing found. Try another spelling, add the year, or paste a TMDB / IMDb link.</div>'; return; }
+        res.innerHTML = '<div class="grid">' + list.map(function (t, i) {
+          return '<button type="button" class="poster" data-i="' + i + '">' + (t.poster ? '<img loading="lazy" src="' + esc(t.poster) + '" alt="">' : '<div class="noimg">No poster</div>') +
+            '<div class="t">' + esc(t.title) + '<div class="y"><span class="badge">' + (t.type === 'tv' ? 'TV' : 'Movie') + '</span>' + (t.year || '') + '</div></div></button>';
+        }).join('') + '</div>';
+        Array.prototype.forEach.call(res.querySelectorAll('.poster'), function (b) { b.onclick = function () { pick(list[+b.getAttribute('data-i')]); }; });
+      }).catch(function (e) { res.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+    };
+
+    add.onclick = function () {
+      var msg = document.getElementById('omsg');
+      if (!picked) return;
+      add.disabled = true;
+      msg.innerHTML = loading('Adding to TorBox…');
+      var body = { type: picked.type, tmdbId: picked.tmdbId, tag: document.getElementById('otag').value };
+      if (fileData) body.file = fileData; else body.magnet = mg.value.trim();
+      call('POST', 'TorviaSearch/AddOwn', body).then(function (r) {
+        msg.innerHTML = '<div class="msg ok">' + (r.downloading ? '⏳ ' : '✅ ') + esc(r.message) +
+          (r.downloading ? ' You can follow it under “' + (status.isAdmin ? 'All adds' : 'My adds') + '”.' : '') + '</div>';
+        if (r.remainingToday != null) { status.remainingToday = r.remainingToday; drawWho(); }
+        mg.value = ''; fileData = null; tf.value = ''; document.getElementById('fname').textContent = '';
+      }).catch(function (e) {
+        msg.innerHTML = '<div class="msg err">' + esc(e.message) + '</div>';
+        ready();
+      });
+    };
   }
 
   function showSearch(q) {

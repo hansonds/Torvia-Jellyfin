@@ -101,6 +101,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether the add result includes a direct TorBox stream link.</summary>
     public bool ReturnStreamLink { get; set; } = true;
 
+    /// <summary>
+    /// Gets or sets a value indicating whether allowed users may add their own magnet link or
+    /// .torrent file (admins always can). Unlike the search, this can start a download on TorBox.
+    /// </summary>
+    public bool AllowOwnTorrents { get; set; } = true;
+
     /// <summary>Gets or sets a value indicating whether old Torvia Search settings were already brought over.</summary>
     public bool SearchSettingsImported { get; set; }
 }
