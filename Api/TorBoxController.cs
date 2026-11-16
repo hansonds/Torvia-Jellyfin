@@ -154,6 +154,126 @@ public class TorBoxController : ControllerBase
         </script></body></html>
         """;
 
+    /// <summary>
+    /// Checks each step of playing a TorBox title, on one title from the library, and says in
+    /// plain words which step fails: the key, the server reaching its own play link, TorBox
+    /// giving a link, and the server opening that link.
+    /// </summary>
+    [HttpGet("CheckPlayback")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    public async Task<ActionResult> CheckPlayback(CancellationToken ct)
+    {
+        var steps = new List<object>();
+        void Add(string name, bool ok, string detail) => steps.Add(new { name, ok, detail });
+        ActionResult Done() => Ok(new { steps });
+
+        try
+        {
+            var a = await _torbox.AccountAsync(ct).ConfigureAwait(false);
+            Add("TorBox API key", true, "Works" + (a.Plan != null ? " (" + a.Plan + " plan)" : string.Empty) + ".");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Add("TorBox API key", false, ex.Message);
+            return Done();
+        }
+
+        // One title from the library to test with.
+        string? strm = null, link = null;
+        var plugin = Plugin.Instance!;
+        try
+        {
+            if (Directory.Exists(plugin.LibraryRoot))
+            {
+                foreach (var f in Directory.EnumerateFiles(plugin.LibraryRoot, "*.strm", SearchOption.AllDirectories).Take(200))
+                {
+                    var text = (await System.IO.File.ReadAllTextAsync(f, ct).ConfigureAwait(false)).Trim();
+                    if (PlayLinks.TryParse(text, out _, out _, out _))
+                    {
+                        strm = f;
+                        link = text;
+                        break;
+                    }
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Add("A title to test with", false, "The library folder can't be read: " + ex.Message);
+            return Done();
+        }
+
+        if (link == null || !PlayLinks.TryParse(link, out var type, out var itemId, out var fileId))
+        {
+            Add("A title to test with", false, "No TorBox titles in the library folder yet. Press Sync now first.");
+            return Done();
+        }
+
+        var title = Path.GetFileNameWithoutExtension(strm);
+        Add("A title to test with", true, title + ".");
+
+        // 1. The server opening its own play link, the way Jellyfin does when it reads a title.
+        var local = new Uri(link);
+        try
+        {
+            using var handler = new HttpClientHandler { AllowAutoRedirect = false, UseProxy = false };
+            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+            using var res = await http.GetAsync(link, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            var code = (int)res.StatusCode;
+            if (code is >= 300 and < 400)
+            {
+                Add("Server reaches its own play link", true, $"{local.Scheme}://{local.Authority} answers.");
+            }
+            else
+            {
+                Add("Server reaches its own play link", false, $"{local.Scheme}://{local.Authority} answered {code}. Press Sync now to rewrite the links; if it stays, something else is listening on that address.");
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
+        {
+            Add("Server reaches its own play link", false, $"Jellyfin does not answer on {local.Scheme}://{local.Authority}. In Dashboard → Networking, leave \"Bind to local network address\" empty (or include 127.0.0.1), restart, and press Sync now.");
+        }
+
+        // 2. TorBox handing out a link for that file.
+        string cdn;
+        try
+        {
+            cdn = await _torbox.GetStreamLinkAsync(type, itemId, fileId, ct, TimeSpan.FromMinutes(1), null).ConfigureAwait(false);
+            Add("TorBox gives a video link", true, "From " + new Uri(cdn).Host + ".");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Add("TorBox gives a video link", false, ex.Message);
+            return Done();
+        }
+
+        // 3. The server opening that link (needed when Jellyfin reads or converts a title).
+        try
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(25) };
+            using var req = new HttpRequestMessage(HttpMethod.Get, cdn);
+            req.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 1024 * 1024 - 1);
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            using var res = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            if (!res.IsSuccessStatusCode)
+            {
+                Add("Server opens the TorBox link", false, $"TorBox's video server answered {(int)res.StatusCode}.");
+            }
+            else
+            {
+                var bytes = (await res.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false)).Length;
+                var secs = Math.Max(watch.Elapsed.TotalSeconds, 0.05);
+                Add("Server opens the TorBox link", true, $"First {bytes / 1024} KB in {secs:0.0} s.");
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
+        {
+            Add("Server opens the TorBox link", false, "This server can't open TorBox's video link (" + ex.Message + "). Check the server's DNS, firewall, VPN or proxy.");
+        }
+
+        return Done();
+    }
+
     /// <summary>Checks the saved API key.</summary>
     [HttpGet("Test")]
     [Authorize(Policy = Policies.RequiresElevation)]

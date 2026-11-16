@@ -32,6 +32,19 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             SaveConfiguration();
         }
 
+        // "Convert when an app can't play the file" arrived in 1.16. Servers already set up keep
+        // playing exactly as before (off); new installs start with it on.
+        if (Configuration.ConfigVersion < 2)
+        {
+            if (!string.IsNullOrWhiteSpace(Configuration.TorBoxApiKey))
+            {
+                Configuration.ConvertWhenNeeded = false;
+            }
+
+            Configuration.ConfigVersion = 2;
+            SaveConfiguration();
+        }
+
         ImportOldSearchSettings(applicationPaths.PluginConfigurationsPath);
     }
 

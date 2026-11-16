@@ -201,6 +201,8 @@ a restart. To update now: **Catalog → Torvia → pick the newest version → I
 | Sync interval | How often TorBox is checked. | every 3 hours |
 | Copy refresh link | A private link that starts a sync when opened in any browser, without signing in. Handy as a phone bookmark. | - |
 | Play straight from TorBox | Apps stream from TorBox directly. | on |
+| Convert when an app can't play the file | If Jellyfin finds the app can't play a file's format, it converts it (through your server) instead of the app loading forever. Off = always send the file straight from TorBox. | on for new installs |
+| Check playback | Button that tests each playback step with one title and says which one fails. | - |
 | Nearest TorBox server for each viewer | Each viewer gets the TorBox server closest to them. | on |
 | A folder for each TorBox tag | One library per tag. | on |
 | Include usenet / web downloads | Also list those downloads. | on |
@@ -281,6 +283,57 @@ account from different places; very heavy use falls under TorBox's fair-use rule
 **What happens when Jellyfin updates?**
 Small updates: nothing, it keeps working. A new major Jellyfin version may need a new Torvia
 version — your libraries and watch history stay in the meantime.
+
+---
+
+## 🧰 Troubleshooting
+
+Start with **Check playback** on the settings page (Playback card). It tests every step with one
+of your titles and says which one fails. The cases below cover what it finds, and what it can't
+see from the server.
+
+### A title loads or buffers forever
+
+| What you see | Why | What to do |
+|---|---|---|
+| Check playback is all green, and it happens in a **browser** | The browser can't play that file's format. Browsers handle H.264 video with AAC audio; most can't play HEVC/x265, DTS, TrueHD or E-AC3, and Firefox can't open MKV files at all. | Turn on **Convert when an app can't play the file** (Playback card), or play in an app that handles every format: Jellyfin Media Player / Jellyfin Desktop on a computer, or a TV or phone app. Or pick an x264 release with AAC audio. |
+| Dashboard shows the session as **Transcoding** and it stutters | Jellyfin is converting the video on your server while pulling it from TorBox. A small server can't keep up, especially with 4K or HEVC. | Use an app that plays the file directly (see above), choose a smaller or x264 release, or turn on hardware acceleration in Jellyfin (Dashboard → Playback). |
+| Check playback fails at **Server reaches its own play link** | Jellyfin isn't answering on its own local address. Usually *Bind to local network address* is set to one address only. | Dashboard → Networking: leave *Bind to local network address* empty (or add `127.0.0.1`), restart Jellyfin, then press **Sync now**. |
+| Check playback fails at **TorBox gives a video link** | TorBox refused: the key is wrong, the plan ran out, or the download was removed from TorBox. | The message says which. Check the plan shown under the API key, then press **Sync now**. |
+| Check playback fails at **Server opens the TorBox link** | The server can't reach TorBox's video servers (DNS filter, firewall, VPN or proxy on the server). | Allow the server to reach `torbox.app` and its video servers. |
+| All green, and it only fails on **one device** | That device can't reach TorBox. The video comes straight from TorBox, not from your server. | Turn off the VPN, ad blocker or DNS filter (Pi-hole, AdGuard, NextDNS) on that device or allow TorBox, and try another network. |
+| It fails only **away from home**, behind a reverse proxy | The app was given an address it can't open from outside. | Put the address you use to open Jellyfin (for example `https://jellyfin.example.com`) in **Public server address**, save, and press **Sync now**. |
+| It plays, but stops after a long **pause** | The TorBox link ran out while paused. | Stop and press play again; it resumes where you were. |
+| Slow or stuttering for a viewer far away | They get a TorBox server far from them. | Turn on **Nearest TorBox server for each viewer**, with the CDN setting on *Auto* in your TorBox account. |
+
+To see what an app is doing, start the title and open **Dashboard** in another tab: the session
+shows *Direct playing* (straight from TorBox) or *Transcoding* (converted on your server).
+
+### A title I added doesn't show up in Jellyfin
+
+- **Check the Last sync card.** It shows what was added and any error. Press **Sync now** if in doubt.
+- **Add every folder as a library.** With *A folder for each TorBox tag* on, each tag has its own
+  folder under *Library folders*, and a title only shows once that folder is a Jellyfin library
+  (type **Movies** for films, **Shows** for series). Never add the parent folder.
+- **Is it finished on TorBox?** Only finished downloads are listed. Your own magnet links that
+  TorBox has to download first appear when the download is done.
+- **Odd file name?** If the Library folders card says some names couldn't be read, add a line
+  under **Name fixes**, e.g. `Kaithi.2019 = Kaithi (2019)`.
+- **Usenet or web downloads** only show when their boxes are ticked under *What to include*.
+
+### Search & Add finds nothing or gives an error
+
+- **"Needs a TMDB key"**: add a free TMDB key on the Search & Add tab.
+- **No releases found**: only releases TorBox already has cached are listed. Try another title
+  or season, or use **Add a link** with your own magnet link.
+- **Torrentio blocked**: some hosting providers are blocked by Torrentio. The error says so; set
+  a different Torrentio address on the Search & Add tab.
+
+### Still stuck?
+
+Open an issue with: your Jellyfin and Torvia versions, how Jellyfin runs (Docker, Windows, NAS),
+the app you play in, what **Check playback** shows, and any lines containing `Torvia` from the
+Jellyfin log (Dashboard → Logs) from when you pressed play.
 
 ---
 

@@ -52,6 +52,16 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool DirectToClients { get; set; } = true;
 
     /// <summary>
+    /// Gets or sets a value indicating whether a file the app can't play itself (by Jellyfin's
+    /// own check of the app's abilities) is left to Jellyfin to convert, instead of being sent
+    /// straight to the app anyway. Converted video goes through the server.
+    /// </summary>
+    public bool ConvertWhenNeeded { get; set; } = true;
+
+    /// <summary>Gets or sets the settings version, used to carry old installs over unchanged.</summary>
+    public int ConfigVersion { get; set; }
+
+    /// <summary>
     /// Gets or sets a value indicating whether tagged TorBox downloads go into a folder per tag
     /// (Tags/&lt;tag&gt;), so each tag can be its own library. Untagged ones stay in Movies / Shows.
     /// </summary>

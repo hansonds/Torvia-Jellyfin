@@ -202,6 +202,10 @@
                                 <div class="fieldDescription checkboxFieldDescription">Apps open the TorBox link themselves.</div>
                             </div>
                             <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="ConvertWhenNeeded" /><span>Convert when an app can't play the file</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">If a browser or app can't play a file's format (for example HEVC or DTS in a browser), Jellyfin converts it, through this server, instead of the app loading forever. Turn off to always send the file straight from TorBox.</div>
+                            </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
                                 <label><input is="emby-checkbox" type="checkbox" id="NearestServerPerViewer" /><span>Nearest TorBox server for each viewer</span></label>
                                 <div class="fieldDescription checkboxFieldDescription">Your TorBox CDN setting must be on Auto.</div>
                             </div>
@@ -209,6 +213,11 @@
                                 <input is="emby-input" type="text" id="PublicServerUrl" label="Public server address (optional)" placeholder="Automatic" />
                                 <div class="fieldDescription">Leave empty unless videos don't start behind a reverse proxy.</div>
                             </div>
+                            <div class="tv-row" style="margin-top:1em">
+                                <button type="button" class="tv-btn" id="ptbCheck">Check playback</button>
+                                <span class="tv-mute tv-small">Tests each step with one title.</span>
+                            </div>
+                            <div id="ptbCheckOut" style="margin-top:.7em;font-size:.9em;line-height:1.55"></div>
                         </div>
 
                         <div class="tv-card">
@@ -343,7 +352,7 @@
             var pluginId = 'd793e3f9-364f-4640-9ebb-7c807bfcb90e';
             var page = document.querySelector('#PhoenicxTorBoxPage');
             var fields = ['TorBoxApiKey', 'PublicServerUrl', 'TimeZone', 'LibraryPath', 'NameFixes'];
-            var checks = ['DirectToClients', 'NearestServerPerViewer', 'FoldersByTag', 'IncludeUsenet', 'IncludeWebDownloads'];
+            var checks = ['DirectToClients', 'ConvertWhenNeeded', 'NearestServerPerViewer', 'FoldersByTag', 'IncludeUsenet', 'IncludeWebDownloads'];
 
             var refreshKey = '';
 
@@ -508,6 +517,21 @@
                     note('#ptbTestNote', (r.ok ? '✓ ' : '✕ ') + r.message + (r.ok ? '' : ' (save the key first)'), r.ok ? 'ok' : 'bad');
                     showPlan(r);
                 }, function () { note('#ptbTestNote', '✕ Could not check the key.', 'bad'); });
+            });
+
+            $('#ptbCheck').addEventListener('click', function () {
+                var b = $('#ptbCheck'), out = $('#ptbCheckOut');
+                b.disabled = true;
+                out.innerHTML = '<span class="tv-mute">Checking… this can take up to a minute.</span>';
+                getJson('PhoenicxTorBox/CheckPlayback').then(function (r) {
+                    var steps = (r && r.steps) || [];
+                    var allOk = steps.length && steps.every(function (s) { return s.ok; });
+                    out.innerHTML = steps.map(function (s) {
+                        return '<div><span style="color:' + (s.ok ? '#6ee7b7' : '#fca5a5') + '">' + (s.ok ? '✓' : '✕') + '</span> <b>' + esc(s.name) + ':</b> ' + esc(s.detail) + '</div>';
+                    }).join('') + (allOk ? '<div class="tv-mute" style="margin-top:.4em">The server side works. If an app still loads forever, the app can\'t play that file\'s format or can\'t reach TorBox: see Troubleshooting in the README.</div>' : '');
+                }, function () {
+                    out.innerHTML = '<span style="color:#fca5a5">Could not run the check.</span>';
+                }).then(function () { b.disabled = false; });
             });
 
             // The refresh link uses the public address when one is set, otherwise the address of this page.

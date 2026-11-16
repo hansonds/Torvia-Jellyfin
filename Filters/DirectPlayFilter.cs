@@ -94,6 +94,11 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
                 case PlaybackInfoResponse info when info.MediaSources is { Count: > 0 }:
                     foreach (var ms in info.MediaSources)
                     {
+                        if (LeaveToJellyfin(ms))
+                        {
+                            continue;
+                        }
+
                         if (web)
                         {
                             await PrepareAsync(ms, true, PublicBase(context.HttpContext), ViewerIp.Of(context.HttpContext), context.HttpContext.RequestAborted).ConfigureAwait(false);
@@ -121,6 +126,20 @@ public sealed class DirectPlayFilter : IAsyncActionFilter
         {
             _log.LogWarning(ex, "Torvia: could not prepare direct play");
         }
+    }
+
+    /// <summary>
+    /// True when Jellyfin has looked at the file and at what this app can play, found that the app
+    /// can't play it as it is, and offers to convert it. With "Convert when needed" on, that offer
+    /// stands (the video then goes through the server); otherwise the app gets the file anyway.
+    /// </summary>
+    private static bool LeaveToJellyfin(MediaSourceInfo ms)
+    {
+        return Plugin.Instance?.Configuration.ConvertWhenNeeded == true
+            && !ms.SupportsDirectPlay
+            && !string.IsNullOrEmpty(ms.TranscodingUrl)
+            && ms.MediaStreams?.Any(s => s.Type == MediaBrowser.Model.Entities.MediaStreamType.Video) == true
+            && PlayLinks.TryParse(ms.Path, out _, out _, out _);
     }
 
     private async Task PrepareItemAsync(BaseItemDto dto, bool web, string publicBase)
