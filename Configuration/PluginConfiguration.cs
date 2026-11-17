@@ -87,6 +87,12 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets the Torrentio address (may include provider options).</summary>
     public string TorrentioUrl { get; set; } = "https://torrentio.strem.fun";
 
+    /// <summary>
+    /// Gets or sets a second Torrentio-style address, searched at the same time as the first
+    /// (for example one set up for other languages). Empty = only the first is used.
+    /// </summary>
+    public string TorrentioUrl2 { get; set; } = string.Empty;
+
     /// <summary>Gets or sets a value indicating whether every signed-in user may use Search &amp; Add.</summary>
     public bool AllowAllUsers { get; set; }
 

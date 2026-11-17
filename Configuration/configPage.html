@@ -272,9 +272,13 @@
                                 <input is="emby-input" type="password" id="TmdbApiKey" label="TMDB API key" autocomplete="off" />
                                 <div class="fieldDescription">themoviedb.org → Settings → API (v3 key or v4 token).</div>
                             </div>
-                            <div class="inputContainer" style="margin-bottom:0">
+                            <div class="inputContainer">
                                 <input is="emby-input" type="text" id="TorrentioUrl" label="Torrentio address" />
                                 <div class="fieldDescription">Default <code>https://torrentio.strem.fun</code>. A configured Torrentio link works too.</div>
+                            </div>
+                            <div class="inputContainer" style="margin-bottom:0">
+                                <input is="emby-input" type="text" id="TorrentioUrl2" label="Second address (optional)" placeholder="None" />
+                                <div class="fieldDescription">Searched together with the first, and the results are joined. Use it for a Torrentio link set up for other languages or sites, or another Torrentio-style source that lists torrents. Paste its install or manifest link.</div>
                             </div>
                         </div>
 
@@ -565,7 +569,7 @@
         (function () {
             var pluginId = 'd793e3f9-364f-4640-9ebb-7c807bfcb90e';
             var page = document.querySelector('#PhoenicxTorBoxPage');
-            var fields = ['TmdbApiKey', 'TorrentioUrl', 'Tags', 'MovieTag', 'TvTag', 'DailyLimitPerUser'];
+            var fields = ['TmdbApiKey', 'TorrentioUrl', 'TorrentioUrl2', 'Tags', 'MovieTag', 'TvTag', 'DailyLimitPerUser'];
             var checks = ['AllowAllUsers', 'ReturnStreamLink', 'ShowCam', 'AllowOwnTorrents'];
             var publicUrl = '';
 

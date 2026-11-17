@@ -14,19 +14,85 @@ public class TorrentioClient
     /// <summary>Initializes a new instance of the <see cref="TorrentioClient"/> class.</summary>
     public TorrentioClient(IHttpClientFactory http) => _http = http;
 
-    /// <summary>Movie: /stream/movie/tt….json — TV: /stream/series/tt…:season:episode.json.</summary>
+    /// <summary>
+    /// Releases from the main Torrentio address and, when one is set, the second address, asked
+    /// at the same time and joined into one list (each torrent once, the main address first).
+    /// If one of the two fails, the other's results are still returned.
+    /// </summary>
     public async Task<List<(ReleaseInfo Release, string? Flags)>> GetAsync(string imdbId, int? season, int? episode, CancellationToken ct)
     {
-        var baseUrl = (Plugin.Instance?.Configuration.TorrentioUrl ?? string.Empty).Trim().TrimEnd('/');
-        if (baseUrl.Length == 0)
+        var cfg = Plugin.Instance?.Configuration;
+        var first = Clean(cfg?.TorrentioUrl);
+        if (first.Length == 0)
         {
-            baseUrl = "https://torrentio.strem.fun";
+            first = "https://torrentio.strem.fun";
         }
 
-        if (baseUrl.EndsWith("/manifest.json", StringComparison.OrdinalIgnoreCase))
+        var second = Clean(cfg?.TorrentioUrl2);
+        if (second.Length == 0 || string.Equals(second, first, StringComparison.OrdinalIgnoreCase))
         {
-            baseUrl = baseUrl[..^"/manifest.json".Length];
+            return await GetFromAsync(first, imdbId, season, episode, ct).ConfigureAwait(false);
         }
+
+        var a = GetFromAsync(first, imdbId, season, episode, ct);
+        var b = GetFromAsync(second, imdbId, season, episode, ct);
+        try
+        {
+            await Task.WhenAll(a, b).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException)
+        {
+            // Looked at one by one below.
+        }
+
+        ct.ThrowIfCancellationRequested();
+        if (!a.IsCompletedSuccessfully && !b.IsCompletedSuccessfully)
+        {
+            // Both failed: report the main address's reason.
+            return await a.ConfigureAwait(false);
+        }
+
+        var list = new List<(ReleaseInfo, string?)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var t in new[] { a, b })
+        {
+            if (!t.IsCompletedSuccessfully)
+            {
+                continue;
+            }
+
+            foreach (var item in t.Result)
+            {
+                if (seen.Add(item.Release.Hash))
+                {
+                    list.Add(item);
+                }
+            }
+        }
+
+        return list;
+    }
+
+    private static string Clean(string? address)
+    {
+        var u = (address ?? string.Empty).Trim().TrimEnd('/');
+        if (u.EndsWith("/manifest.json", StringComparison.OrdinalIgnoreCase))
+        {
+            u = u[..^"/manifest.json".Length];
+        }
+
+        // A link copied from Stremio starts with stremio://
+        if (u.StartsWith("stremio://", StringComparison.OrdinalIgnoreCase))
+        {
+            u = "https://" + u["stremio://".Length..];
+        }
+
+        return u;
+    }
+
+    /// <summary>Movie: /stream/movie/tt….json — TV: /stream/series/tt…:season:episode.json.</summary>
+    private async Task<List<(ReleaseInfo Release, string? Flags)>> GetFromAsync(string baseUrl, string imdbId, int? season, int? episode, CancellationToken ct)
+    {
 
         var url = season is null
             ? $"{baseUrl}/stream/movie/{imdbId}.json"
@@ -74,7 +140,7 @@ public class TorrentioClient
 
         var list = new List<(ReleaseInfo, string?)>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (!doc.RootElement.TryGetProperty("streams", out var streams))
+        if (!doc.RootElement.TryGetProperty("streams", out var streams) || streams.ValueKind != JsonValueKind.Array)
         {
             return list;
         }
@@ -91,7 +157,9 @@ public class TorrentioClient
             var title = Str(s, "title") ?? Str(s, "description") ?? string.Empty;
             var lines = title.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             var infoIdx = Array.FindIndex(lines, l => l.Contains("👤", StringComparison.Ordinal) || l.Contains("💾", StringComparison.Ordinal));
-            var names = infoIdx < 0 ? lines : lines[..infoIdx];
+            // Other Torrentio-style sources put an icon in front of the name ("📂 Name"): drop it.
+            var names = (infoIdx < 0 ? lines : lines[..infoIdx])
+                .Select(l => LeadingIcons.Replace(l, string.Empty)).Where(l => l.Length > 0).ToArray();
             var info = infoIdx < 0 ? string.Empty : lines[infoIdx];
             var flags = infoIdx < 0 || infoIdx + 1 >= lines.Length ? null : string.Join(' ', lines[(infoIdx + 1)..]);
 
@@ -102,7 +170,7 @@ public class TorrentioClient
                 hintFile = Str(bh, "filename");
                 if (bh.TryGetProperty("videoSize", out var vs) && vs.ValueKind == JsonValueKind.Number)
                 {
-                    hintSize = vs.GetInt64();
+                    hintSize = vs.TryGetInt64(out var size) ? size : (long)vs.GetDouble();
                 }
             }
 
@@ -128,6 +196,8 @@ public class TorrentioClient
 
         return list;
     }
+
+    private static readonly Regex LeadingIcons = new(@"^[^\p{L}\p{N}\[\(]+", RegexOptions.Compiled);
 
     private const string Blocked =
         "Torrentio blocks many cloud / VPS servers. Run the server's traffic through a proxy (e.g. Cloudflare WARP) " +

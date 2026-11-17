@@ -218,6 +218,7 @@ be read.
 |---|---|---|
 | **TMDB API key** | Needed for searching (themoviedb.org → Settings → API; v3 key or v4 token). | — |
 | Torrentio address | Where cached releases are looked up; a configured Torrentio link works too. | `https://torrentio.strem.fun` |
+| Second address (optional) | A second Torrentio-style address, searched at the same time; results are joined. For example a Torrentio link set up for other languages or sites. | empty |
 | Every user on this server | Let all users use Search & Add. | off |
 | User list | Tick the users who may use it (admins always can). | — |
 | Adds per user per day | Daily limit for non-admins (0 = no limit). | 10 |
