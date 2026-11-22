@@ -111,6 +111,44 @@ public sealed class PushNotifier : IHostedService, IDisposable
         return ok;
     }
 
+    /// <summary>
+    /// Sends a message written by the server owner to the chosen users (all users with a device
+    /// when none are chosen). Disabled users are skipped. Returns users reached and devices ok/failed.
+    /// </summary>
+    public async Task<(int Users, int Ok, int Failed)> SendMessageAsync(string title, string body, IReadOnlyCollection<Guid>? only, CancellationToken ct)
+    {
+        var fb = Firebase();
+        if (fb is null)
+        {
+            return (0, 0, 0);
+        }
+
+        PruneSignedOut();
+        int users = 0, ok = 0, failed = 0;
+        foreach (var group in _store.All().GroupBy(d => d.UserId, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!Guid.TryParse(group.Key, out var userId) || (only is { Count: > 0 } && !only.Contains(userId))
+                || _users.GetUserById(userId) is not { } user || user.HasPermission(PermissionKind.IsDisabled))
+            {
+                continue;
+            }
+
+            var uid = userId.ToString("N");
+            var data = new Dictionary<string, string> { ["type"] = "message", ["userId"] = uid, ["title"] = title, ["body"] = body };
+            var (o, f) = await SendAsync(fb.Value.ProjectId, group.ToList(), data, ct).ConfigureAwait(false);
+            if (o > 0)
+            {
+                users++;
+            }
+
+            ok += o;
+            failed += f;
+        }
+
+        _log.LogInformation("Torvia push: message sent to {Users} user(s), {Ok} device(s) ok, {Failed} failed", users, ok, failed);
+        return (users, ok, failed);
+    }
+
     /// <summary>Removes devices that are no longer signed in to Jellyfin. Never fails.</summary>
     public void PruneSignedOut()
     {

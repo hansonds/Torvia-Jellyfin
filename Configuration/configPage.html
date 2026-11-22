@@ -88,9 +88,25 @@
     #PhoenicxTorBoxPage .tv-hist > div:first-child { border-top: 0; }
     #PhoenicxTorBoxPage .tv-hist .tv-when { margin-left: auto; color: var(--tv-mute); font-size: .85em; white-space: nowrap; }
 
+    #PhoenicxTorBoxPage .tv-msgbox { margin-top: 1.1em; padding: 1em 1.1em; border-radius: 12px; background: rgba(0,0,0,.25); border: 1px solid var(--tv-line); }
+    #PhoenicxTorBoxPage .tv-input { width: 100%; color: inherit; font: inherit; background: rgba(0,0,0,.25); border: 1px solid var(--tv-line); border-radius: 10px; padding: .6em .8em; }
+    #PhoenicxTorBoxPage .tv-input:focus { outline: none; border-color: #a855f7; }
+    #PhoenicxTorBoxPage .tv-steps > div { display: flex; gap: .8em; padding: .55em 0; border-top: 1px solid var(--tv-line); line-height: 1.55; font-size: .93em; }
+    #PhoenicxTorBoxPage .tv-steps > div:first-child { border-top: 0; }
+    #PhoenicxTorBoxPage .tv-steps > div > b { flex: none; width: 1.7em; height: 1.7em; border-radius: 50%; display: grid; place-items: center; font-size: .85em; background: linear-gradient(135deg, #8b5cf6, #06b6d4); color: #fff; }
+    #PhoenicxTorBoxPage .tv-steps em { font-style: normal; font-weight: 600; color: #fff; }
+    #PhoenicxTorBoxPage .tv-app { background: linear-gradient(135deg, rgba(249,115,22,.10), rgba(168,85,247,.14)); border-color: rgba(249,115,22,.3); }
+    #PhoenicxTorBoxPage .tv-app-head { display: flex; gap: .9em; align-items: center; margin-bottom: .6em; }
+    #PhoenicxTorBoxPage .tv-app-icon { width: 46px; height: 46px; flex: none; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 1.4em; color: #fff; background: linear-gradient(135deg, #f97316, #db2777 60%, #7c3aed); box-shadow: 0 6px 18px rgba(249,115,22,.25); }
+    #PhoenicxTorBoxPage .tv-app-list { margin: 0 0 1em; padding-left: 0; list-style: none; line-height: 1.6; font-size: .92em; }
+    #PhoenicxTorBoxPage .tv-app-list li { padding: .15em 0; }
+    #PhoenicxTorBoxPage .tv-store { display: inline-flex; align-items: center; gap: .6em; padding: .45em 1em .45em .8em; border-radius: 10px; background: #000; border: 1px solid rgba(255,255,255,.25); color: #fff; text-decoration: none; line-height: 1.1; }
+    #PhoenicxTorBoxPage .tv-store:hover { border-color: rgba(255,255,255,.6); }
+    #PhoenicxTorBoxPage .tv-store small { display: block; font-size: .68em; opacity: .75; text-transform: uppercase; letter-spacing: .04em; }
+    #PhoenicxTorBoxPage .tv-store span { font-weight: 700; font-size: 1.02em; }
     #PhoenicxTorBoxPage .tv-foot { margin: 2.2em 0 1em; text-align: center; color: var(--tv-mute); line-height: 1.7; font-size: .9em; }
     #PhoenicxTorBoxPage .tv-foot a { color: inherit; }
-    #PhoenicxTorBoxPage #tzMine, #PhoenicxTorBoxPage .tv-card ol a { color: #c084fc; }
+    #PhoenicxTorBoxPage #tzMine, #PhoenicxTorBoxPage .tv-steps a { color: #c084fc; }
 </style>
 
     <div data-role="content">
@@ -264,6 +280,32 @@
                     </div>
                 </div>
 
+                <div class="tv-card tv-app" style="margin-bottom:1em">
+                    <div class="tv-app-head">
+                        <div class="tv-app-icon">P</div>
+                        <div>
+                            <h3 style="margin:0">PHOENIXA, the app made for Torvia</h3>
+                            <div class="tv-mute tv-small">Jellyfin app for Android phones, Android TV and Fire TV</div>
+                        </div>
+                    </div>
+                    <ul class="tv-app-list">
+                        <li>🔎 <b>Search &amp; Add built in</b>: search a title, pick a release and a tag, on the phone or with a TV remote</li>
+                        <li>🔔 <b>Push notifications</b>: “New on PHOENIXA” the moment a movie or episode arrives, plus your own messages</li>
+                        <li>▶️ <b>Torvia titles play straight from TorBox</b>, with watch progress kept in Jellyfin</li>
+                        <li>📺 <b>One app for TV and phone</b>, made for a remote control as much as for touch</li>
+                    </ul>
+                    <div class="tv-row">
+                        <a class="tv-store" href="https://play.google.com/store/apps/details?id=org.phoenicx.nova" target="_blank" rel="noopener">
+                            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 5 3.5Z" fill="#34d399"/></svg>
+                            <span><small>Get it on</small>Google Play</span>
+                        </a>
+                        <a class="tv-store" href="https://github.com/hansonds/PHOENIXA/releases/latest/download/PHOENIXA.apk" target="_blank" rel="noopener">
+                            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 20h14" fill="none" stroke="#c4b5fd" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span><small>Download APK from</small>GitHub</span>
+                        </a>
+                    </div>
+                </div>
+
                 <form id="TorviaSearchForm">
                     <div class="tv-grid">
                         <div class="tv-card">
@@ -355,29 +397,72 @@
                         <button type="button" class="tv-btn" id="pnTest">Send test to my devices</button>
                         <span class="tv-note" id="pnTestNote"></span>
                     </div>
+
+                    <div class="tv-msgbox">
+                        <div style="font-weight:700;margin-bottom:.15em">✉️ Send a message to your users</div>
+                        <div class="tv-mute tv-small" style="margin-bottom:.7em">Shows as a notification in PHOENIXA, for example "Server restart tonight at 11" or "New Malayalam movies added".</div>
+                        <input type="text" id="pnMsgTitle" class="tv-input" maxlength="80" placeholder="Title (optional, e.g. PHOENIXA)" />
+                        <textarea id="pnMsgBody" class="tv-textarea" maxlength="500" style="min-height:4.5em;margin-top:.5em" placeholder="Your message"></textarea>
+                        <div class="tv-row" style="justify-content:space-between;margin-top:.15em"><span class="tv-mute tv-small">Send to:</span><span class="tv-mute tv-small" id="pnMsgCount">0 / 500</span></div>
+                        <div class="tv-users" id="pnMsgUsers" style="margin:.4em 0 .8em"><span class="tv-mute tv-small">No phones registered yet.</span></div>
+                        <div class="tv-row">
+                            <button type="button" class="tv-btn primary" id="pnMsgSend">Send message</button>
+                            <span class="tv-note" id="pnMsgNote"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tv-card tv-app" style="margin-bottom:1em">
+                    <div class="tv-app-head">
+                        <div class="tv-app-icon">P</div>
+                        <div>
+                            <h3 style="margin:0">PHOENIXA, the app made for Torvia</h3>
+                            <div class="tv-mute tv-small">Jellyfin app for Android phones, Android TV and Fire TV</div>
+                        </div>
+                    </div>
+                    <ul class="tv-app-list">
+                        <li>🔎 <b>Search &amp; Add built in</b>: search a title, pick a release and a tag, on the phone or with a TV remote</li>
+                        <li>🔔 <b>Push notifications</b>: “New on PHOENIXA” the moment a movie or episode arrives, plus your own messages</li>
+                        <li>▶️ <b>Torvia titles play straight from TorBox</b>, with watch progress kept in Jellyfin</li>
+                        <li>📺 <b>One app for TV and phone</b>, made for a remote control as much as for touch</li>
+                    </ul>
+                    <div class="tv-row">
+                        <a class="tv-store" href="https://play.google.com/store/apps/details?id=org.phoenicx.nova" target="_blank" rel="noopener">
+                            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 5 3.5Z" fill="#34d399"/></svg>
+                            <span><small>Get it on</small>Google Play</span>
+                        </a>
+                        <a class="tv-store" href="https://github.com/hansonds/PHOENIXA/releases/latest/download/PHOENIXA.apk" target="_blank" rel="noopener">
+                            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 20h14" fill="none" stroke="#c4b5fd" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            <span><small>Download APK from</small>GitHub</span>
+                        </a>
+                    </div>
                 </div>
 
                 <form id="TorviaPushForm">
                     <div class="tv-grid">
-                        <div class="tv-card">
+                        <div class="tv-card tv-full">
                             <h3>🔔 Notifications</h3>
                             <div class="tv-sub">Phones sign up by themselves when PHOENIXA is opened.</div>
                             <div class="checkboxContainer checkboxContainer-withDescription">
                                 <label><input is="emby-checkbox" type="checkbox" id="PushEnabled" /><span>Send push notifications to PHOENIXA</span></label>
                                 <div class="fieldDescription checkboxFieldDescription">Several titles added together arrive as one notification. A full library scan (more than 50 new items at once) sends nothing.</div>
                             </div>
-                            <div class="tv-split" style="margin:0"><span>Registered devices</span><b id="pnDevices">—</b><span>Yours</span><b id="pnMine">—</b></div>
+                            <div class="tv-split" style="margin:0;max-width:420px"><span>Registered devices</span><b id="pnDevices">—</b><span>Yours</span><b id="pnMine">—</b></div>
                         </div>
 
-                        <div class="tv-card">
-                            <h3>🧭 Setup (once)</h3>
-                            <div class="tv-sub">About five minutes, free.</div>
-                            <ol style="margin:0;padding-left:1.2em;line-height:1.7;font-size:.92em">
-                                <li><a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a> → <b>Add project</b> (Analytics not needed).</li>
-                                <li><b>Add app → Android</b>, package name <code>org.phoenicx.nova</code> → Register → download <b>google-services.json</b> (skip the SDK steps).</li>
-                                <li><b>Project settings → Service accounts → Generate new private key</b> → download the JSON.</li>
-                                <li>Paste both files below, tick the box above, and <b>Save</b>.</li>
-                            </ol>
+                        <div class="tv-card tv-full">
+                            <h3>🧭 Setup (once, about 10 minutes, free)</h3>
+                            <div class="tv-sub">You only need a Google account. No coding, and you can ignore any code Firebase shows you.</div>
+                            <div class="tv-steps">
+                                <div><b>1</b><div><strong>Create a Firebase project.</strong> Open <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a> and sign in. Press <em>Create a project</em> (or <em>Add project</em>). Any name works, e.g. <code>PHOENIXA</code>. When it asks about <em>Google Analytics</em>, switch it <b>off</b> (not needed), then press <em>Create project</em> and wait until it says it's ready.</div></div>
+                                <div><b>2</b><div><strong>Add the Android app.</strong> On the project page press the <em>Android</em> icon (or <em>Add app → Android</em>). In <em>Android package name</em> type exactly <code>org.phoenicx.nova</code>. The nickname can be anything; leave the SHA-1 empty. Press <em>Register app</em>.</div></div>
+                                <div><b>3</b><div><strong>Download google-services.json.</strong> Press <em>Download google-services.json</em>. The next screens show code for app developers: skip them with <em>Next</em> and finish with <em>Continue to console</em>.</div></div>
+                                <div><b>4</b><div><strong>Download the service account key.</strong> Click the ⚙️ gear next to <em>Project Overview</em> → <em>Project settings</em> → tab <em>Service accounts</em> → <em>Generate new private key</em> → <em>Generate key</em>. A second .json file downloads. Keep it private: it lets anyone send notifications from your project.</div></div>
+                                <div><b>5</b><div><strong>Paste both files here.</strong> Open each file in Notepad (right-click → Open with → Notepad), press Ctrl+A, Ctrl+C, and paste it into the matching box below: <em>google-services.json</em> left, the key right.</div></div>
+                                <div><b>6</b><div><strong>Switch it on.</strong> Tick <em>Send push notifications to PHOENIXA</em> and press <em>Save settings</em>. The status at the top turns <b>On</b>. You can now delete the downloaded key file.</div></div>
+                                <div><b>7</b><div><strong>Test it.</strong> On your phone, open PHOENIXA (close and reopen it if it was already open) and allow notifications when asked. Back here, <em>Yours</em> shows 1 or more; press <em>Send test to my devices</em>.</div></div>
+                            </div>
+                            <div class="tv-mute tv-small" style="margin-top:.6em">Each server owner makes their own free Firebase project; PHOENIXA picks up the settings from the server it's signed in to. Phones need Google Play services (Fire TV doesn't have them).</div>
                         </div>
 
                         <div class="tv-card">
@@ -764,8 +849,51 @@
                     show('pnGs', s.hasGoogleServices, '✓ Saved (project <b>' + esc(s.projectId) + '</b>)');
                     show('pnSa', !!s.serviceAccountEmail, '✓ Service account saved (' + esc(s.serviceAccountEmail) + ')');
                     $('#pnMsg').innerHTML = s.warning ? '<div class="tv-note bad">' + esc(s.warning) + '</div>' : '';
+                    drawRecipients(s.deviceUsers || []);
                 }, function () { $('#pnStatus').textContent = 'Could not read the status'; });
             }
+
+            // Who can get the message: users with PHOENIXA registered, all ticked.
+            function drawRecipients(list) {
+                var box = $('#pnMsgUsers');
+                if (!list.length) { box.innerHTML = '<span class="tv-mute tv-small">No phones registered yet.</span>'; return; }
+                ApiClient.getUsers().then(function (users) {
+                    var names = {};
+                    users.forEach(function (u) { names[String(u.Id).replace(/-/g, '').toLowerCase()] = u.Name; });
+                    box.innerHTML = list.map(function (d) {
+                        var id = String(d.userId).toLowerCase();
+                        return '<label class="tv-user on"><input type="checkbox" class="pnTo" data-id="' + esc(id) + '" checked />' +
+                            '<span>' + esc(names[id] || 'Unknown user') + '</span><span class="tv-admin">' + d.count + (d.count === 1 ? ' device' : ' devices') + '</span></label>';
+                    }).join('');
+                });
+            }
+
+            $('#pnMsgUsers').addEventListener('change', function () {
+                page.querySelectorAll('#pnMsgUsers .tv-user').forEach(function (l) { l.classList.toggle('on', l.querySelector('input').checked); });
+            });
+            $('#pnMsgBody').addEventListener('input', function () { $('#pnMsgCount').textContent = $('#pnMsgBody').value.length + ' / 500'; });
+
+            $('#pnMsgSend').addEventListener('click', function () {
+                var n = $('#pnMsgNote'), b = $('#pnMsgSend');
+                var body = $('#pnMsgBody').value.trim();
+                var to = Array.prototype.slice.call(page.querySelectorAll('.pnTo')).filter(function (x) { return x.checked; }).map(function (x) { return x.getAttribute('data-id'); });
+                if (!body) { n.className = 'tv-note bad'; n.textContent = 'Write a message first.'; return; }
+                if (!to.length) { n.className = 'tv-note bad'; n.textContent = 'Tick at least one user.'; return; }
+                b.disabled = true;
+                n.className = 'tv-note'; n.textContent = 'Sending…';
+                postJson('TorviaPush/Admin/Send', { title: $('#pnMsgTitle').value.trim(), message: body, userIds: to }).then(function (r) {
+                    var x = r.body || {};
+                    if (x.ok > 0) {
+                        n.className = 'tv-note ok';
+                        n.textContent = '✓ Sent to ' + x.users + (x.users === 1 ? ' user' : ' users') + ' (' + x.ok + (x.ok === 1 ? ' device' : ' devices') + ')' + (x.failed ? ', ' + x.failed + ' failed' : '') + '.';
+                        $('#pnMsgBody').value = ''; $('#pnMsgCount').textContent = '0 / 500';
+                    } else {
+                        n.className = 'tv-note bad'; n.textContent = '✕ No device got it. Check the Torvia push lines in the Jellyfin log.';
+                    }
+                }, function (e) {
+                    n.className = 'tv-note bad'; n.textContent = '✕ ' + e.message;
+                }).then(function () { b.disabled = false; });
+            });
 
             $('#pnGsReplace').addEventListener('click', function () { show('pnGs', false); $('#pnGs').focus(); });
             $('#pnSaReplace').addEventListener('click', function () { show('pnSa', false); $('#pnSa').focus(); });

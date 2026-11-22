@@ -245,16 +245,28 @@ arrives: a "New on PHOENIXA" notification on their phone, like a message. It wor
 movie, series or episode in Jellyfin (not only TorBox titles), and each user only hears about
 titles they are allowed to see. It uses Firebase Cloud Messaging, which is free.
 
-**Setup (once, about five minutes):**
+Get PHOENIXA: [Google Play](https://play.google.com/store/apps/details?id=org.phoenicx.nova) ·
+[APK from GitHub](https://github.com/hansonds/PHOENIXA/releases/latest/download/PHOENIXA.apk)
 
-1. Go to [console.firebase.google.com](https://console.firebase.google.com) → **Add project**
-   (Google Analytics is not needed).
-2. **Add app → Android**, package name `org.phoenicx.nova` → **Register** → download
-   **google-services.json**. Skip the SDK steps.
-3. **Project settings → Service accounts → Generate new private key** → download the JSON file.
-4. In Torvia's settings, open the **Push notifications** tab, paste both files, tick
-   **Send push notifications to PHOENIXA** and press **Save**.
-5. Open PHOENIXA on your phone (it registers by itself), then press **Send test to my devices**.
+**Setup (once, about 10 minutes, free).** You only need a Google account; ignore any code Firebase shows you.
+
+1. **Create a Firebase project.** Open [console.firebase.google.com](https://console.firebase.google.com),
+   press **Create a project**. Any name works (e.g. `PHOENIXA`). Switch **Google Analytics off**
+   (not needed) and press **Create project**.
+2. **Add the Android app.** Press the **Android** icon (or **Add app → Android**). Package name:
+   exactly `org.phoenicx.nova`. Nickname: anything. Leave SHA-1 empty. Press **Register app**.
+3. **Download google-services.json.** Then skip the code screens with **Next** and finish with
+   **Continue to console**.
+4. **Download the service account key.** ⚙️ gear next to *Project Overview* → **Project settings**
+   → tab **Service accounts** → **Generate new private key** → **Generate key**. Keep this file private.
+5. **Paste both files** into Torvia's **Push notifications** tab (open each in Notepad, Ctrl+A,
+   Ctrl+C, paste).
+6. Tick **Send push notifications to PHOENIXA** and press **Save settings**. The status turns **On**.
+7. Open PHOENIXA on your phone (close and reopen it if it was open) and allow notifications.
+   **Yours** shows 1 or more; press **Send test to my devices**.
+
+**Your own messages:** the same tab has a **Send a message** box. Write a title and a message,
+tick the users, and press **Send message**. It arrives in PHOENIXA as a notification.
 
 **Good to know:**
 
@@ -268,8 +280,8 @@ titles they are allowed to see. It uses Firebase Cloud Messaging, which is free.
 
 **API for apps** (signed-in Jellyfin user): `GET /TorviaPush/Config`, `POST /TorviaPush/Register`
 `{token, deviceId, deviceName, platform, appVersion}`, `POST /TorviaPush/Unregister` `{deviceId}`,
-`POST /TorviaPush/Test`. Messages are data-only: `type` (`new_titles` or `test`), `userId`, and
-`items` (a JSON list of up to 10 titles with `id`, `type`, `name`, `year`, and for episodes
+`POST /TorviaPush/Test`. Messages are data-only: `type` (`new_titles`, `message` or `test`),
+`userId`; `message` adds `title` and `body`; `new_titles` adds `items` (a JSON list of up to 10 titles with `id`, `type`, `name`, `year`, and for episodes
 `seriesId`, `seriesName`, `season`, `episode`).
 
 ---

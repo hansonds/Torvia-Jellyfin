@@ -129,8 +129,56 @@ public class PushController : ControllerBase
             devices = devices.Count,
             users = devices.Select(d => d.UserId).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             myDevices = devices.Count(d => string.Equals(d.UserId, me, StringComparison.OrdinalIgnoreCase)),
+            deviceUsers = devices.GroupBy(d => d.UserId, StringComparer.OrdinalIgnoreCase)
+                .Select(g => new { userId = g.Key, count = g.Count() }).ToList(),
             warning,
         });
+    }
+
+    /// <summary>
+    /// Sends the owner's own message: body { "title": "…", "message": "…", "userIds": ["…"] }
+    /// (no userIds = everyone with PHOENIXA set up for notifications).
+    /// </summary>
+    [HttpPost("Admin/Send")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    public async Task<ActionResult> SendMessage([FromBody] JsonElement body, CancellationToken ct)
+    {
+        var title = (Str(body, "title") ?? string.Empty).Trim();
+        var message = (Str(body, "message") ?? string.Empty).Trim();
+        if (message.Length == 0)
+        {
+            return BadRequest(new { message = "Write a message first." });
+        }
+
+        if (title.Length == 0)
+        {
+            title = "PHOENIXA";
+        }
+
+        if (title.Length > 80 || message.Length > 500)
+        {
+            return BadRequest(new { message = "Keep the title under 80 and the message under 500 characters." });
+        }
+
+        var only = new List<Guid>();
+        if (body.ValueKind == JsonValueKind.Object && body.TryGetProperty("userIds", out var ids) && ids.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var x in ids.EnumerateArray())
+            {
+                if (x.ValueKind == JsonValueKind.String && Guid.TryParse(x.GetString(), out var g))
+                {
+                    only.Add(g);
+                }
+            }
+        }
+
+        if (_notifier.Firebase() is null)
+        {
+            return BadRequest(new { message = "Push notifications aren't on or set up yet." });
+        }
+
+        var (users, ok, failed) = await _notifier.SendMessageAsync(title, message, only, ct).ConfigureAwait(false);
+        return Ok(new { users, ok, failed });
     }
 
     /// <summary>Saves the Firebase app settings from a pasted google-services.json.</summary>
