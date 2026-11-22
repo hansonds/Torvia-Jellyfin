@@ -67,6 +67,13 @@ even on a small server.
   (`PSArips.com | Heart.of.the.Beast…`, `www.1TamilMV.style`) that Jellyfin may show instead of the
   movie's name. Torvia puts the clean title back and locks it, so it can't be overwritten again.
 - ✏️ **Name fixes** — correct any title by hand: `text in the TorBox name = Title (Year)`.
+- 🕰️ **"Recently added" stays honest** — when Torvia renames or moves a title's file (a corrected
+  name, a second version, another tag), the title keeps its original date, so it doesn't jump to
+  the top of *Recently added* again.
+- 🔗 **Refresh link** — a private link that starts a sync from any browser without signing in;
+  keep it as a bookmark on your phone.
+- 📅 **TorBox plan at a glance** — the settings page shows your TorBox plan and when it expires
+  (or renews), in yellow during the last 7 days.
 - 🎞️ **Versions** — the same movie in 2160p and 1080p shows as one movie with a version choice.
 - 💬 **Subtitles** — subtitles inside the video work as usual; separate subtitle files from the
   download (`.srt`, `.ass`, `.ssa`, `.vtt`, `.sub`, `.smi`) are added next to the movie with their
@@ -93,6 +100,11 @@ even on a small server.
   watched × the file's bitrate).
 - 🛟 **Safe fallback** — if TorBox doesn't give a link at that moment, Jellyfin plays it the normal
   way instead of failing.
+- 🎛️ **Convert when an app can't play the file** — if a browser or app can't play a file's format
+  (HEVC or DTS in a browser, MKV in Firefox), Jellyfin can convert it instead of the app loading
+  forever. Files the app can play still go straight from TorBox.
+- 🩺 **Check playback** — one button tests every step (TorBox key, the server's own play link,
+  TorBox giving a link, the server opening it) and says in plain words which one fails.
 
 ### 🔎 Torvia Search (Search & Add)
 - 🔍 **Search any movie or TV show** — by name, TMDB number or link, IMDb id (`tt…`) or link.
@@ -112,8 +124,11 @@ even on a small server.
   adds shows the download progress. Can be turned off for non-admin users.
 - 👥 **You decide who can use it** — every user, or only the users you tick; admins always can.
   **Daily limit** per user (admins unlimited).
+- 🌐 **Two release sources at once** — besides the Torrentio address you can set a second
+  Torrentio-style address (for example one set up for Malayalam / Tamil / other sites). Both are
+  searched together and the results joined; if one is down, the other still answers.
 - 📱 **Apps can use it too** — e.g. PHOENIXA's *Search & Add* button. API: [SEARCH-API.md](SEARCH-API.md).
-- ⚙️ **Own settings tab** — *Torvia Search* tab on the plugin page: TMDB API key, Torrentio address,
+- ⚙️ **Own settings tab** — *Search & Add* tab on the plugin page: TMDB API key, Torrentio addresses,
   users, daily limit, tags, options. The **TorBox key is shared** with the Torvia tab, and the web
   page link uses the **Public server address** from the Torvia tab when it's set.
 - 🌐 **Torrentio note** — releases are looked up on Torrentio, which blocks many cloud / VPS
@@ -121,6 +136,15 @@ even on a small server.
   a proxy (e.g. Cloudflare WARP) or use a self-hosted Torrentio address.
 - ♻️ **Moving from the old separate "Torvia Search" plugin?** Its settings are copied over
   automatically on first start. Install Torvia, restart, then uninstall the old plugin.
+
+### 🔔 Push notifications & messages (PHOENIXA)
+- 📲 **"New on PHOENIXA" on phones** — the moment a new movie, series or episode appears in
+  Jellyfin, each user gets one notification with what's new, only for titles they're allowed to see.
+- ✉️ **Your own messages** — send a message to everyone or to chosen users from the settings page
+  ("Server restart tonight at 11"). Phones get it as a notification; TVs show it the next time
+  PHOENIXA checks.
+- 🆓 **Free, and private to your server** — uses your own free Firebase project; nothing goes
+  through anyone else. Full details: [Push notifications](#-push-notifications-phoenixa).
 
 ### Safe and private
 - 🔒 **Your TorBox API key never leaves the server.** Apps only get short-lived TorBox links.
@@ -212,7 +236,7 @@ The page also shows the **bandwidth saved** counter and the last sync result: mo
 episodes, subtitles, tag folders, libraries scanned, titles fixed, and any file names that couldn't
 be read.
 
-### Torvia Search tab
+### Search & Add tab
 
 | Setting | What it does | Default |
 |---|---|---|
@@ -227,7 +251,21 @@ be read.
 | Show CAM/TS releases | Marked ⚠️ and listed last. | on |
 | Users can add their own magnet link or torrent file | The "Add a link" tab. Uncached links make TorBox download them (uses a download slot). Admins always can. | on |
 
-The tab also shows whether Search is ready, the web page link, and the recent adds.
+The tab also shows whether Search is ready, the web page link, the recent adds, and the PHOENIXA
+app with its download links.
+
+### Push notifications tab
+
+| Setting | What it does | Default |
+|---|---|---|
+| Send push notifications to PHOENIXA | Switches notifications to phones on or off. | off |
+| google-services.json | The Firebase settings of the PHOENIXA app (from your own Firebase project). Not secret. | — |
+| Service account key | Lets this server send through Firebase. Kept secret on the server; after saving only its email is shown, with a **Replace** button. | — |
+| Send test to my devices | Sends a test notification to your own phones. | - |
+| Send a message | Title, message (up to 500 characters), **Everyone** or chosen users, **Send message**. The last 10 sent messages are listed with **Delete**. | - |
+
+The tab also shows how many devices are registered (and how many are yours), the setup steps,
+and the PHOENIXA app with its download links.
 
 ### Start a sync from a script or bot
 Create an API key in **Dashboard → API Keys**, then:
@@ -240,55 +278,127 @@ curl "https://your-jellyfin-server/PhoenicxTorBox/Status" -H 'Authorization: Med
 
 ## 🔔 Push notifications (PHOENIXA)
 
-Torvia can tell **PHOENIXA** users the moment something new
-arrives: a "New on PHOENIXA" notification on their phone, like a message. It works for every new
-movie, series or episode in Jellyfin (not only TorBox titles), and each user only hears about
-titles they are allowed to see. It uses Firebase Cloud Messaging, which is free.
+Torvia can tell **PHOENIXA** users the moment something new arrives: a "New on PHOENIXA"
+notification on their phone, like a chat message. You can also send your own messages to your
+users. It uses Firebase Cloud Messaging, which is free.
 
 Get PHOENIXA: [Google Play](https://play.google.com/store/apps/details?id=org.phoenicx.nova) ·
 [APK from GitHub](https://github.com/hansonds/PHOENIXA/releases/latest/download/PHOENIXA.apk)
 
-**Setup (once, about 10 minutes, free).** You only need a Google account; ignore any code Firebase shows you.
+### What sends a notification
+
+Once push is on and set up, it's automatic; there's nothing to press.
+
+- **Every new movie, series or episode in Jellyfin** — not only TorBox titles: local, OneDrive or
+  NAS libraries too, and titles added with Search & Add.
+- **Each user only hears about titles they can see** (their library access and parental rating).
+- **Several at once = one notification.** Torvia waits until nothing new has arrived for a minute
+  (at most 5 minutes), then sends each user one notification with up to 10 titles, newest first. A
+  new season gives one notification, not ten; when a whole series is new, its episodes aren't
+  listed separately.
+
+**When it stays quiet:**
+
+- **Big scans** — more than 50 new items at once (for example adding a whole new library) sends
+  nothing, so nobody's phone gets flooded.
+- **Renamed or moved files** — Torvia keeps their old date, so they don't count as new.
+- **Older titles** — anything whose date added is more than 2 days old.
+- **Disabled users**, trailers, extras, and episodes that aren't there yet (missing episodes).
+
+**Where it shows:**
+
+- **Phones** (and Android TVs with Google Play services) get a real notification.
+- **Fire TV** has no Google Play services, so it can't get push notifications. New titles show up
+  in PHOENIXA's normal *Recently added* lists there, and your own messages still reach it (see below).
+
+### Your own messages
+
+The **Send a message** box on the Push notifications tab:
+
+1. Write a title (optional; "PHOENIXA" when empty) and a message (up to 500 characters).
+2. Choose **Everyone** (every enabled user) or untick it and tick the users you want. Each user
+   shows how many phones they have registered, or "TV only".
+3. Press **Send message**.
+
+- **Phones** get it straight away as a notification (when push is set up).
+- **Every message is also saved on the server**, so PHOENIXA on TVs (and phones without push)
+  shows it the next time it checks, for up to 7 days. This works even if you never set up Firebase.
+- The **last 10 sent messages** are listed with the time, the title and who it went to, each with a
+  **Delete** button. A deleted message is no longer given to devices that haven't shown it yet.
+- Messages are kept for 30 days (at most 50), then removed by themselves.
+
+### Setup (once, about 10 minutes, free)
+
+You only need a Google account. No coding: ignore any code Firebase shows you.
 
 1. **Create a Firebase project.** Open [console.firebase.google.com](https://console.firebase.google.com),
-   press **Create a project**. Any name works (e.g. `PHOENIXA`). Switch **Google Analytics off**
-   (not needed) and press **Create project**.
-2. **Add the Android app.** Press the **Android** icon (or **Add app → Android**). In
-   *Android package name* type exactly **`org.phoenicx.nova`** (all small letters, two dots, no
-   quotes). Nickname: anything. Leave SHA-1 empty. Press **Register app**.
-3. **Download google-services.json.** Then skip the code screens with **Next** and finish with
-   **Continue to console**.
-4. **Download the service account key.** ⚙️ gear next to *Project Overview* → **Project settings**
-   → tab **Service accounts** → **Generate new private key** → **Generate key**. Keep this file private.
-5. **Paste both files** into Torvia's **Push notifications** tab (open each in Notepad, Ctrl+A,
-   Ctrl+C, paste).
-6. Tick **Send push notifications to PHOENIXA** and press **Save settings**. The status turns **On**.
-7. Open PHOENIXA on your phone (close and reopen it if it was open) and allow notifications.
-   **Yours** shows 1 or more; press **Send test to my devices**.
+   press **Create a project** (or **Add project**). Any name works, e.g. `PHOENIXA`. When it asks
+   about **Google Analytics**, switch it **off** (not needed), press **Create project** and wait
+   until it's ready.
+2. **Add the Android app.** On the project page press the **Android** icon (or **Add app →
+   Android**). In *Android package name* type exactly **`org.phoenicx.nova`** (all small letters,
+   two dots, no quotes). The nickname can be anything; leave SHA-1 empty. Press **Register app**.
+3. **Download google-services.json.** The next screens show code for app developers: skip them with
+   **Next** and finish with **Continue to console**.
+4. **Download the service account key.** Click the ⚙️ gear next to *Project Overview* →
+   **Project settings** → tab **Service accounts** → **Generate new private key** → **Generate key**.
+   A second .json file downloads. Keep it private: it lets anyone send notifications from your project.
+5. **Paste both files** into Torvia's **Push notifications** tab: open each file in Notepad
+   (right-click → Open with → Notepad), press Ctrl+A, Ctrl+C, and paste it into the matching box.
+6. **Switch it on.** Tick **Send push notifications to PHOENIXA** and press **Save settings**. The
+   status at the top turns **On**. You can now delete the downloaded key file.
+7. **Test it.** On your phone open PHOENIXA (close and reopen it if it was already open) and allow
+   notifications when asked. Back in Torvia, **Yours** shows 1 or more; press **Send test to my devices**.
 
-**Your own messages:** the same tab has a **Send a message** box. Write a title and a message,
-choose **Everyone** or tick users, and press **Send message**. Phones get it as a notification
-(when push is set up). Every message is also saved, so PHOENIXA on TVs (which can't get push
-notifications) shows it the next time it checks, for up to 7 days. The last 10 sent messages are
-listed with a **Delete** button; a deleted message is no longer shown to devices that haven't seen
-it yet. Messages are kept for 30 days (at most 50).
+### Other servers
 
-**Good to know:**
+Every server owner who wants notifications makes **their own** free Firebase project with the same
+steps (the package name is always `org.phoenicx.nova`). PHOENIXA asks the server it's signed in to
+for that server's Firebase settings, so:
 
-- Titles added together (a sync, a season) arrive as **one** notification, sent once nothing new
-  has arrived for a minute.
-- A big library scan (more than 50 new items at once) sends nothing, so adding a library doesn't
-  flood everyone's phone.
-- The service account key stays on your server. It is never sent back to the settings page or
-  to apps, and it is not written to the logs.
-- Phones that sign out of Jellyfin are removed from the list automatically.
+- each server sends with its own key, to its own users; nothing goes through anyone else;
+- a server that isn't set up simply sends no notifications (PHOENIXA still works normally, and the
+  owner's messages still reach TVs);
+- a phone gets notifications from the server PHOENIXA is signed in to.
 
-**API for apps** (signed-in Jellyfin user): `GET /TorviaPush/Config`, `POST /TorviaPush/Register`
-`{token, deviceId, deviceName, platform, appVersion}`, `POST /TorviaPush/Unregister` `{deviceId}`,
-`POST /TorviaPush/Test`, `GET /TorviaPush/Messages` (the owner's messages for the caller from the
-last 7 days, newest first: `{messages: [{id, title, body, sentAt}]}`). Push messages are data-only: `type` (`new_titles`, `message` or `test`),
-`userId`; `message` adds `title` and `body`; `new_titles` adds `items` (a JSON list of up to 10 titles with `id`, `type`, `name`, `year`, and for episodes
-`seriesId`, `seriesName`, `season`, `episode`).
+### Privacy and safety
+
+- The **service account key stays on your server**, in its own file readable only by Jellyfin. It
+  is never sent back to the settings page or to apps, and never written to the logs.
+- Apps only get the public Firebase app settings (project id, app id, API key, sender id).
+- Phones that sign out of Jellyfin are removed from the list automatically (checked daily and
+  before every send), and so are phones Firebase no longer knows.
+- Device tokens are never written to the logs; each send is logged as one line (user, number of
+  titles, devices ok / failed).
+
+### If notifications don't arrive
+
+| What you see | What to do |
+|---|---|
+| Status says *Switched on, but not set up yet* | Paste both files and press **Save settings**. |
+| Warning that the two files are from different projects | Both files must come from the same Firebase project. Replace one of them. |
+| Test says *No device got it*, and **Yours** is 0 | Your phone hasn't registered. Update PHOENIXA, close and reopen it signed in as the same user, allow notifications, then reload the settings page. |
+| **Yours** is 1 or more, but nothing arrives | Check *Dashboard → Logs* for lines starting with `Torvia push`; they say why Firebase refused. Also check the phone's notification settings for PHOENIXA and battery saving. |
+| New titles don't notify | They may be older than 2 days, part of a scan of more than 50 items, or not visible to that user. Notifications arrive about a minute after the title shows up in Jellyfin. |
+| Nothing on Fire TV | Expected: Fire TV can't receive push. Your own messages still appear there. |
+
+### API for apps
+
+All calls need a signed-in Jellyfin user.
+
+| Call | Body / answer |
+|---|---|
+| `GET /TorviaPush/Config` | `{enabled, projectId, appId, apiKey, senderId}`, or `{enabled: false}` when off or not set up. Never the service account. |
+| `POST /TorviaPush/Register` | `{token, deviceId, deviceName, platform, appVersion}` → 204. One entry per device; the same token under another device replaces it. |
+| `POST /TorviaPush/Unregister` | `{deviceId}` → 204. |
+| `POST /TorviaPush/Test` | Sends a test to the caller's devices → 204, or 404 when none got it. |
+| `GET /TorviaPush/Messages` | The owner's messages for the caller from the last 7 days, newest first, at most 20: `{messages: [{id, title, body, sentAt}]}` (`sentAt` in UTC, e.g. `2026-11-22T11:00:00Z`). |
+
+Push messages are **data-only** (the app builds the notification): `type` (`new_titles`,
+`message` or `test`) and `userId` (32 hex letters). `message` adds `title` and `body`.
+`new_titles` adds `items`, a JSON list (as a string) of up to 10 titles with `id`, `type`
+(`Movie`, `Series`, `Episode`), `name`, `year`, and for episodes `seriesId`, `seriesName`,
+`season`, `episode`. Android priority is high, kept for 24 hours if the phone is offline.
 
 ---
 
@@ -334,6 +444,20 @@ first scan of a big library takes a while because Jellyfin reads every new title
 **Can many people watch at once?**
 Yes. Since the video comes from TorBox, your server isn't the bottleneck. TorBox allows using an
 account from different places; very heavy use falls under TorBox's fair-use rules.
+
+**Does Torvia update itself?**
+Jellyfin's *Update Plugins* scheduled task (Dashboard → Scheduled Tasks) checks once a day and
+installs new versions from your plugin repositories. A new version only takes effect after
+Jellyfin restarts. To update right away: Dashboard → Plugins → Catalog → Torvia → install the
+newest version → restart.
+
+**Do I need PHOENIXA?**
+No. Torvia works with every Jellyfin app. PHOENIXA adds Search & Add inside the app, push
+notifications and your own messages on phones and TVs.
+
+**Do other server owners use my Firebase project for notifications?**
+No. Each server owner makes their own free project (see [Push notifications](#-push-notifications-phoenixa));
+your key never leaves your server.
 
 **What happens when Jellyfin updates?**
 Small updates: nothing, it keeps working. A new major Jellyfin version may need a new Torvia
