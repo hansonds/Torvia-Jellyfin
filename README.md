@@ -253,8 +253,9 @@ Get PHOENIXA: [Google Play](https://play.google.com/store/apps/details?id=org.ph
 1. **Create a Firebase project.** Open [console.firebase.google.com](https://console.firebase.google.com),
    press **Create a project**. Any name works (e.g. `PHOENIXA`). Switch **Google Analytics off**
    (not needed) and press **Create project**.
-2. **Add the Android app.** Press the **Android** icon (or **Add app → Android**). Package name:
-   exactly `org.phoenicx.nova`. Nickname: anything. Leave SHA-1 empty. Press **Register app**.
+2. **Add the Android app.** Press the **Android** icon (or **Add app → Android**). In
+   *Android package name* type exactly **`org.phoenicx.nova`** (all small letters, two dots, no
+   quotes). Nickname: anything. Leave SHA-1 empty. Press **Register app**.
 3. **Download google-services.json.** Then skip the code screens with **Next** and finish with
    **Continue to console**.
 4. **Download the service account key.** ⚙️ gear next to *Project Overview* → **Project settings**
@@ -266,7 +267,11 @@ Get PHOENIXA: [Google Play](https://play.google.com/store/apps/details?id=org.ph
    **Yours** shows 1 or more; press **Send test to my devices**.
 
 **Your own messages:** the same tab has a **Send a message** box. Write a title and a message,
-tick the users, and press **Send message**. It arrives in PHOENIXA as a notification.
+choose **Everyone** or tick users, and press **Send message**. Phones get it as a notification
+(when push is set up). Every message is also saved, so PHOENIXA on TVs (which can't get push
+notifications) shows it the next time it checks, for up to 7 days. The last 10 sent messages are
+listed with a **Delete** button; a deleted message is no longer shown to devices that haven't seen
+it yet. Messages are kept for 30 days (at most 50).
 
 **Good to know:**
 
@@ -280,7 +285,8 @@ tick the users, and press **Send message**. It arrives in PHOENIXA as a notifica
 
 **API for apps** (signed-in Jellyfin user): `GET /TorviaPush/Config`, `POST /TorviaPush/Register`
 `{token, deviceId, deviceName, platform, appVersion}`, `POST /TorviaPush/Unregister` `{deviceId}`,
-`POST /TorviaPush/Test`. Messages are data-only: `type` (`new_titles`, `message` or `test`),
+`POST /TorviaPush/Test`, `GET /TorviaPush/Messages` (the owner's messages for the caller from the
+last 7 days, newest first: `{messages: [{id, title, body, sentAt}]}`). Push messages are data-only: `type` (`new_titles`, `message` or `test`),
 `userId`; `message` adds `title` and `body`; `new_titles` adds `items` (a JSON list of up to 10 titles with `id`, `type`, `name`, `year`, and for episodes
 `seriesId`, `seriesName`, `season`, `episode`).
 

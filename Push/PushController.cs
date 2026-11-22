@@ -172,13 +172,81 @@ public class PushController : ControllerBase
             }
         }
 
+        // Saved for everyone it is meant for, so TVs (no push) can fetch it too.
+        var saved = new OwnerMessage
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Title = title,
+            Body = message,
+            SentAt = DateTime.UtcNow,
+            UserIds = only.Select(g => g.ToString("N")).Distinct().ToList(),
+        };
+        _store.AddMessage(saved);
+        _log.LogInformation("Torvia push: message saved for {Who}", only.Count == 0 ? "everyone" : only.Count + " user(s)");
+
+        // Pushed to phones only when Firebase is set up.
         if (_notifier.Firebase() is null)
         {
-            return BadRequest(new { message = "Push notifications aren't on or set up yet." });
+            return Ok(new { id = saved.Id, pushed = false, users = 0, ok = 0, failed = 0 });
         }
 
         var (users, ok, failed) = await _notifier.SendMessageAsync(title, message, only, ct).ConfigureAwait(false);
-        return Ok(new { users, ok, failed });
+        return Ok(new { id = saved.Id, pushed = true, users, ok, failed });
+    }
+
+    /// <summary>
+    /// The owner's messages for the signed-in user (meant for everyone, or for them), from the
+    /// last 7 days, newest first, at most 20. TVs without push use this.
+    /// </summary>
+    [HttpGet("Messages")]
+    public ActionResult Messages()
+    {
+        Response.Headers.CacheControl = "no-store";
+        var me = UserId().ToString("N");
+        var since = DateTime.UtcNow.AddDays(-7);
+        var list = _store.Messages()
+            .Where(m => m.SentAt >= since && (m.UserIds.Count == 0 || m.UserIds.Contains(me, StringComparer.OrdinalIgnoreCase)))
+            .Take(20)
+            .Select(m => new
+            {
+                id = m.Id,
+                title = m.Title,
+                body = m.Body,
+                sentAt = m.SentAt.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+            })
+            .ToList();
+        return Ok(new { messages = list });
+    }
+
+    /// <summary>For the settings page: the last 10 messages sent.</summary>
+    [HttpGet("Admin/Messages")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    public ActionResult AdminMessages()
+    {
+        Response.Headers.CacheControl = "no-store";
+        var list = _store.Messages().Take(10).Select(m => new
+        {
+            id = m.Id,
+            title = m.Title,
+            body = m.Body,
+            sentAt = m.SentAt.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture),
+            userIds = m.UserIds,
+        }).ToList();
+        return Ok(new { messages = list });
+    }
+
+    /// <summary>Deletes a sent message, so devices that haven't fetched it yet won't show it.</summary>
+    [HttpPost("Admin/DeleteMessage")]
+    [Authorize(Policy = Policies.RequiresElevation)]
+    public ActionResult DeleteMessage([FromBody] JsonElement body)
+    {
+        var id = Str(body, "id");
+        if (string.IsNullOrWhiteSpace(id) || !_store.DeleteMessage(id.Trim()))
+        {
+            return NotFound(new { message = "That message no longer exists." });
+        }
+
+        return NoContent();
     }
 
     /// <summary>Saves the Firebase app settings from a pasted google-services.json.</summary>
