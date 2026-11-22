@@ -31,6 +31,11 @@ public class ServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddHostedService(sp => sp.GetRequiredService<TitleGuard>());
         serviceCollection.AddSingleton<StreamStats>();
         serviceCollection.AddHostedService(sp => sp.GetRequiredService<StreamStats>());
+        // Push notifications to PHOENIXA
+        serviceCollection.AddSingleton<Push.PushStore>();
+        serviceCollection.AddSingleton<Push.FcmSender>();
+        serviceCollection.AddSingleton<Push.PushNotifier>();
+        serviceCollection.AddHostedService(sp => sp.GetRequiredService<Push.PushNotifier>());
         serviceCollection.PostConfigure<MvcOptions>(o => o.Filters.AddService<DirectPlayFilter>());
     }
 }

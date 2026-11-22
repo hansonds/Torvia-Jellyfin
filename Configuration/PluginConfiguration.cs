@@ -93,6 +93,21 @@ public class PluginConfiguration : BasePluginConfiguration
     /// </summary>
     public string TorrentioUrl2 { get; set; } = string.Empty;
 
+    /// <summary>Gets or sets a value indicating whether push notifications are sent to PHOENIXA.</summary>
+    public bool PushEnabled { get; set; }
+
+    /// <summary>Gets or sets the Firebase project id (from google-services.json).</summary>
+    public string PushProjectId { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the Firebase app id of PHOENIXA (from google-services.json).</summary>
+    public string PushAppId { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the Firebase API key of PHOENIXA (from google-services.json; not secret).</summary>
+    public string PushApiKey { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets the Firebase sender id (project number).</summary>
+    public string PushSenderId { get; set; } = string.Empty;
+
     /// <summary>Gets or sets a value indicating whether every signed-in user may use Search &amp; Add.</summary>
     public bool AllowAllUsers { get; set; }
 

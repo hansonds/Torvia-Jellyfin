@@ -238,6 +238,42 @@ curl "https://your-jellyfin-server/PhoenicxTorBox/Status" -H 'Authorization: Med
 
 ---
 
+## 🔔 Push notifications (PHOENIXA)
+
+Torvia can tell **PHOENIXA** users the moment something new
+arrives: a "New on PHOENIXA" notification on their phone, like a message. It works for every new
+movie, series or episode in Jellyfin (not only TorBox titles), and each user only hears about
+titles they are allowed to see. It uses Firebase Cloud Messaging, which is free.
+
+**Setup (once, about five minutes):**
+
+1. Go to [console.firebase.google.com](https://console.firebase.google.com) → **Add project**
+   (Google Analytics is not needed).
+2. **Add app → Android**, package name `org.phoenicx.nova` → **Register** → download
+   **google-services.json**. Skip the SDK steps.
+3. **Project settings → Service accounts → Generate new private key** → download the JSON file.
+4. In Torvia's settings, open the **Push notifications** tab, paste both files, tick
+   **Send push notifications to PHOENIXA** and press **Save**.
+5. Open PHOENIXA on your phone (it registers by itself), then press **Send test to my devices**.
+
+**Good to know:**
+
+- Titles added together (a sync, a season) arrive as **one** notification, sent once nothing new
+  has arrived for a minute.
+- A big library scan (more than 50 new items at once) sends nothing, so adding a library doesn't
+  flood everyone's phone.
+- The service account key stays on your server. It is never sent back to the settings page or
+  to apps, and it is not written to the logs.
+- Phones that sign out of Jellyfin are removed from the list automatically.
+
+**API for apps** (signed-in Jellyfin user): `GET /TorviaPush/Config`, `POST /TorviaPush/Register`
+`{token, deviceId, deviceName, platform, appVersion}`, `POST /TorviaPush/Unregister` `{deviceId}`,
+`POST /TorviaPush/Test`. Messages are data-only: `type` (`new_titles` or `test`), `userId`, and
+`items` (a JSON list of up to 10 titles with `id`, `type`, `name`, `year`, and for episodes
+`seriesId`, `seriesName`, `season`, `episode`).
+
+---
+
 ## 📱 Apps
 
 | App | Direct from TorBox |

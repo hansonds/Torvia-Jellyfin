@@ -90,7 +90,7 @@
 
     #PhoenicxTorBoxPage .tv-foot { margin: 2.2em 0 1em; text-align: center; color: var(--tv-mute); line-height: 1.7; font-size: .9em; }
     #PhoenicxTorBoxPage .tv-foot a { color: inherit; }
-    #PhoenicxTorBoxPage #tzMine { color: #c084fc; }
+    #PhoenicxTorBoxPage #tzMine, #PhoenicxTorBoxPage .tv-card ol a { color: #c084fc; }
 </style>
 
     <div data-role="content">
@@ -113,6 +113,7 @@
             <div class="tv-tabs" role="tablist">
                 <button type="button" class="tv-tab" data-tab="main">Library &amp; playback</button>
                 <button type="button" class="tv-tab" data-tab="search">Search &amp; Add</button>
+                <button type="button" class="tv-tab" data-tab="push">Push notifications</button>
             </div>
 
             <!-- ============ TAB 1 ============ -->
@@ -336,6 +337,65 @@
                         </div>
                     </div>
 
+                    <div class="tv-savebar">
+                        <button type="submit" class="tv-btn primary">Save settings</button>
+                        <span class="tv-mute">Changes apply right away.</span>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ============ TAB 3 ============ -->
+            <div class="tvPane" data-pane="push" style="display:none">
+
+                <div class="tv-card tv-hero" style="margin-bottom:1em">
+                    <div class="tv-label">Push notifications</div>
+                    <div id="pnStatus" style="font-size:1.25em;font-weight:700;margin:.25em 0">Loading…</div>
+                    <div class="tv-mute tv-small">PHOENIXA shows “New on PHOENIXA” on your users' phones as soon as a new movie, series or episode is added. Each user only hears about titles they can see. Sent through Firebase Cloud Messaging (free).</div>
+                    <div class="tv-row" style="margin-top:.9em">
+                        <button type="button" class="tv-btn" id="pnTest">Send test to my devices</button>
+                        <span class="tv-note" id="pnTestNote"></span>
+                    </div>
+                </div>
+
+                <form id="TorviaPushForm">
+                    <div class="tv-grid">
+                        <div class="tv-card">
+                            <h3>🔔 Notifications</h3>
+                            <div class="tv-sub">Phones sign up by themselves when PHOENIXA is opened.</div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="PushEnabled" /><span>Send push notifications to PHOENIXA</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">Several titles added together arrive as one notification. A full library scan (more than 50 new items at once) sends nothing.</div>
+                            </div>
+                            <div class="tv-split" style="margin:0"><span>Registered devices</span><b id="pnDevices">—</b><span>Yours</span><b id="pnMine">—</b></div>
+                        </div>
+
+                        <div class="tv-card">
+                            <h3>🧭 Setup (once)</h3>
+                            <div class="tv-sub">About five minutes, free.</div>
+                            <ol style="margin:0;padding-left:1.2em;line-height:1.7;font-size:.92em">
+                                <li><a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a> → <b>Add project</b> (Analytics not needed).</li>
+                                <li><b>Add app → Android</b>, package name <code>org.phoenicx.nova</code> → Register → download <b>google-services.json</b> (skip the SDK steps).</li>
+                                <li><b>Project settings → Service accounts → Generate new private key</b> → download the JSON.</li>
+                                <li>Paste both files below, tick the box above, and <b>Save</b>.</li>
+                            </ol>
+                        </div>
+
+                        <div class="tv-card">
+                            <h3>📄 google-services.json</h3>
+                            <div class="tv-sub">The Firebase settings of the PHOENIXA app. Not secret.</div>
+                            <div id="pnGsSaved" class="tv-row" style="display:none"><span id="pnGsText"></span><button type="button" class="tv-copy" id="pnGsReplace">Replace</button></div>
+                            <textarea id="pnGs" class="tv-textarea" spellcheck="false" placeholder="Paste the whole google-services.json file here"></textarea>
+                        </div>
+
+                        <div class="tv-card">
+                            <h3>🔑 Service account key</h3>
+                            <div class="tv-sub">Lets this server send the messages. Kept secret on the server and never shown again.</div>
+                            <div id="pnSaSaved" class="tv-row" style="display:none"><span id="pnSaText"></span><button type="button" class="tv-copy" id="pnSaReplace">Replace</button></div>
+                            <textarea id="pnSa" class="tv-textarea" spellcheck="false" autocomplete="off" placeholder="Paste the whole service account .json file here"></textarea>
+                        </div>
+                    </div>
+
+                    <div id="pnMsg" style="margin-top:1em"></div>
                     <div class="tv-savebar">
                         <button type="submit" class="tv-btn primary">Save settings</button>
                         <span class="tv-mute">Changes apply right away.</span>
@@ -660,6 +720,101 @@
         })();
     </script>
 
+    <!-- ============ Tab 3 script ============ -->
+    <script type="text/javascript">
+        (function () {
+            var pluginId = 'd793e3f9-364f-4640-9ebb-7c807bfcb90e';
+            var page = document.querySelector('#PhoenicxTorBoxPage');
+
+            function $(sel) { return page.querySelector(sel); }
+            function esc(s) {
+                return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                });
+            }
+            function getJson(path) { return ApiClient.ajax({ type: 'GET', url: ApiClient.getUrl(path), dataType: 'json' }); }
+            function postJson(path, body) {
+                return fetch(ApiClient.getUrl(path), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"' },
+                    body: JSON.stringify(body || {})
+                }).then(function (r) {
+                    return r.text().then(function (t) {
+                        var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) { }
+                        if (!r.ok) throw new Error((j && j.message) || ('The server answered ' + r.status + '.'));
+                        return { status: r.status, body: j };
+                    });
+                });
+            }
+            function show(id, saved, text) {
+                $('#' + id + 'Saved').style.display = saved ? '' : 'none';
+                $('#' + id).style.display = saved ? 'none' : '';
+                $('#' + id + 'Text').innerHTML = text || '';
+            }
+
+            function loadStatus() {
+                getJson('TorviaPush/Admin/Status').then(function (s) {
+                    $('#pnStatus').innerHTML = s.ready
+                        ? '<span class="tv-dot ok"></span> On'
+                        : s.enabled
+                            ? '<span class="tv-dot bad"></span> Switched on, but not set up yet: paste both files below'
+                            : '<span class="tv-dot"></span> Off';
+                    $('#pnDevices').textContent = s.devices + (s.users ? ' (' + s.users + (s.users === 1 ? ' user)' : ' users)') : '');
+                    $('#pnMine').textContent = s.myDevices;
+                    show('pnGs', s.hasGoogleServices, '✓ Saved (project <b>' + esc(s.projectId) + '</b>)');
+                    show('pnSa', !!s.serviceAccountEmail, '✓ Service account saved (' + esc(s.serviceAccountEmail) + ')');
+                    $('#pnMsg').innerHTML = s.warning ? '<div class="tv-note bad">' + esc(s.warning) + '</div>' : '';
+                }, function () { $('#pnStatus').textContent = 'Could not read the status'; });
+            }
+
+            $('#pnGsReplace').addEventListener('click', function () { show('pnGs', false); $('#pnGs').focus(); });
+            $('#pnSaReplace').addEventListener('click', function () { show('pnSa', false); $('#pnSa').focus(); });
+
+            page.addEventListener('pageshow', function () {
+                ApiClient.getPluginConfiguration(pluginId).then(function (c) { $('#PushEnabled').checked = !!c.PushEnabled; });
+                loadStatus();
+            });
+
+            $('#TorviaPushForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                var msg = $('#pnMsg'), gs = $('#pnGs').value.trim(), sa = $('#pnSa').value.trim();
+                msg.innerHTML = '';
+                Dashboard.showLoadingMsg();
+                var steps = Promise.resolve();
+                if (gs) steps = steps.then(function () { return postJson('TorviaPush/Admin/GoogleServices', { json: gs }); }).then(function () { $('#pnGs').value = ''; });
+                if (sa) steps = steps.then(function () { return postJson('TorviaPush/Admin/ServiceAccount', { json: sa }); }).then(function () { $('#pnSa').value = ''; });
+                steps.then(function () {
+                    return ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+                        c.PushEnabled = $('#PushEnabled').checked;
+                        return ApiClient.updatePluginConfiguration(pluginId, c);
+                    });
+                }).then(function (r) {
+                    Dashboard.hideLoadingMsg();
+                    Dashboard.processPluginConfigurationUpdateResult(r);
+                    loadStatus();
+                }, function (err) {
+                    Dashboard.hideLoadingMsg();
+                    msg.innerHTML = '<div class="tv-note bad">✕ ' + esc(err.message) + '</div>';
+                    loadStatus();
+                });
+                return false;
+            });
+
+            $('#pnTest').addEventListener('click', function () {
+                var n = $('#pnTestNote');
+                n.className = 'tv-note'; n.textContent = 'Sending…';
+                postJson('TorviaPush/Test').then(function () {
+                    n.className = 'tv-note ok'; n.textContent = '✓ Sent. It should arrive on your phone in a few seconds.';
+                }, function (e) {
+                    n.className = 'tv-note bad';
+                    n.textContent = /404/.test(e.message)
+                        ? '✕ No device got it. Open PHOENIXA on your phone, signed in as you, with push turned on here, then try again.'
+                        : '✕ ' + e.message;
+                });
+            });
+        })();
+    </script>
+
     <!-- ============ Tabs ============ -->
     <script type="text/javascript">
         (function () {
@@ -674,7 +829,7 @@
             });
             var start = 'main';
             try { start = sessionStorage.getItem('torviaTab') || 'main'; } catch (e) { }
-            show(start === 'search' ? 'search' : 'main');
+            show(start === 'search' || start === 'push' ? start : 'main');
         })();
     </script>
 </div>
