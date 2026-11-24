@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using Jellyfin.Data;
+using Jellyfin.Data.Enums;
 using Jellyfin.Data.Queries;
 using Jellyfin.Database.Implementations.Enums;
 using MediaBrowser.Controller.Devices;
@@ -35,6 +36,10 @@ public sealed class PushNotifier : IHostedService, IDisposable
     private readonly FcmSender _fcm;
     private readonly ILogger<PushNotifier> _log;
     private readonly ConcurrentDictionary<Guid, byte> _pending = new();
+
+    // Removed movies and series, as they were when removed (the item itself is gone by the time
+    // the batch is sent), with the users who could see them.
+    private readonly ConcurrentDictionary<Guid, Removed> _removed = new();
     private readonly object _lock = new();
     private readonly SemaphoreSlim _sending = new(1, 1);
     private Timer? _batchTimer;
@@ -71,6 +76,7 @@ public sealed class PushNotifier : IHostedService, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _library.ItemAdded += OnItemAdded;
+        _library.ItemRemoved += OnItemRemoved;
         _batchTimer = new Timer(_ => _ = FlushAsync(), null, Timeout.Infinite, Timeout.Infinite);
         _dailyTimer = new Timer(_ => PruneSignedOut(), null, TimeSpan.FromMinutes(10), TimeSpan.FromDays(1));
         return Task.CompletedTask;
@@ -80,6 +86,7 @@ public sealed class PushNotifier : IHostedService, IDisposable
     public Task StopAsync(CancellationToken cancellationToken)
     {
         _library.ItemAdded -= OnItemAdded;
+        _library.ItemRemoved -= OnItemRemoved;
         _batchTimer?.Change(Timeout.Infinite, Timeout.Infinite);
         _dailyTimer?.Change(Timeout.Infinite, Timeout.Infinite);
         return Task.CompletedTask;
@@ -189,17 +196,117 @@ public sealed class PushNotifier : IHostedService, IDisposable
                 }
 
                 _pending.TryAdd(e.Item.Id, 0);
-
-                // Send after 60 quiet seconds, but never more than 5 minutes after the first.
-                var left = _firstPending + MaxWait - now;
-                var wait = left < Quiet ? left : Quiet;
-                _batchTimer?.Change(wait < TimeSpan.Zero ? TimeSpan.Zero : wait, Timeout.InfiniteTimeSpan);
+                Schedule(now);
             }
         }
         catch (Exception ex)
         {
             _log.LogDebug(ex, "Torvia push: could not queue a new item");
         }
+    }
+
+    // Send after 60 quiet seconds, but never more than 5 minutes after the first item. Call with _lock held.
+    private void Schedule(DateTime now)
+    {
+        var left = _firstPending + MaxWait - now;
+        var wait = left < Quiet ? left : Quiet;
+        _batchTimer?.Change(wait < TimeSpan.Zero ? TimeSpan.Zero : wait, Timeout.InfiniteTimeSpan);
+    }
+
+    private sealed record Removed(Guid Id, string Type, string Name, int? Year, Dictionary<string, string> ProviderIds, HashSet<string> Users);
+
+    private void OnItemRemoved(object? sender, ItemChangeEventArgs e)
+    {
+        try
+        {
+            var item = e.Item;
+            if (Plugin.Instance?.Configuration.PushRemovals != true || Firebase() is null || item is null
+                || item.IsVirtualItem || item.ExtraType is not null || !item.OwnerId.Equals(Guid.Empty)
+                || item is not (Movie or Series))
+            {
+                return;
+            }
+
+            // Who could see it, worked out now while the item is still complete.
+            var users = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var uid in _store.All().Select(d => d.UserId).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    if (Guid.TryParse(uid, out var g) && _users.GetUserById(g) is { } user && item.IsVisibleStandalone(user))
+                    {
+                        users.Add(uid);
+                    }
+                }
+                catch (Exception)
+                {
+                    // Can't tell for this user: leave them out.
+                }
+            }
+
+            if (users.Count == 0)
+            {
+                return;
+            }
+
+            var removed = new Removed(item.Id, item is Series ? "Series" : "Movie", item.Name ?? string.Empty, item.ProductionYear,
+                new Dictionary<string, string>(item.ProviderIds ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase), users);
+            lock (_lock)
+            {
+                var now = DateTime.UtcNow;
+                if (_pending.IsEmpty && _removed.IsEmpty)
+                {
+                    _firstPending = now;
+                }
+
+                _removed[item.Id] = removed;
+                Schedule(now);
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.LogDebug(ex, "Torvia push: could not queue a removed item");
+        }
+    }
+
+    /// <summary>
+    /// True when the title is still in Jellyfin after all: Torvia renamed or moved its file, a
+    /// second copy exists, or it was added again. Those aren't real removals.
+    /// </summary>
+    private bool StillThere(Removed r)
+    {
+        var kind = r.Type == "Series" ? BaseItemKind.Series : BaseItemKind.Movie;
+        foreach (var key in new[] { "Tmdb", "Imdb", "Tvdb" })
+        {
+            if (r.ProviderIds.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+            {
+                var hits = _library.GetItemList(new InternalItemsQuery
+                {
+                    IncludeItemTypes = new[] { kind },
+                    Recursive = true,
+                    IsVirtualItem = false,
+                    HasAnyProviderId = new Dictionary<string, string> { [key] = value },
+                });
+                if (hits.Any(h => !h.Id.Equals(r.Id)))
+                {
+                    return true;
+                }
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(r.Name))
+        {
+            return false;
+        }
+
+        var byName = _library.GetItemList(new InternalItemsQuery
+        {
+            IncludeItemTypes = new[] { kind },
+            Recursive = true,
+            IsVirtualItem = false,
+            Name = r.Name,
+        });
+        return byName.Any(h => !h.Id.Equals(r.Id) && (r.Year is null || h.ProductionYear is null || h.ProductionYear == r.Year));
     }
 
     /// <summary>A real, new movie, series or episode (not a trailer, extra, missing episode or old file).</summary>
@@ -225,13 +332,16 @@ public sealed class PushNotifier : IHostedService, IDisposable
     private async Task FlushAsync()
     {
         List<Guid> ids;
+        List<Removed> gone;
         lock (_lock)
         {
             ids = _pending.Keys.ToList();
             _pending.Clear();
+            gone = _removed.Values.ToList();
+            _removed.Clear();
         }
 
-        if (ids.Count == 0)
+        if (ids.Count == 0 && gone.Count == 0)
         {
             return;
         }
@@ -239,6 +349,12 @@ public sealed class PushNotifier : IHostedService, IDisposable
         await _sending.WaitAsync().ConfigureAwait(false);
         try
         {
+            await SendRemovedAsync(gone).ConfigureAwait(false);
+            if (ids.Count == 0)
+            {
+                return;
+            }
+
             if (ids.Count > MaxBatch)
             {
                 _log.LogInformation("Torvia push: {Count} new items at once (a library scan?), no notification sent", ids.Count);
@@ -302,15 +418,75 @@ public sealed class PushNotifier : IHostedService, IDisposable
         }
     }
 
+    /// <summary>
+    /// One "removed" notification per user, for real removals only (not renames, moves or second
+    /// copies). A big clean-up (more than 50 at once) sends nothing.
+    /// </summary>
+    private async Task SendRemovedAsync(List<Removed> gone)
+    {
+        if (gone.Count == 0)
+        {
+            return;
+        }
+
+        if (gone.Count > MaxBatch)
+        {
+            _log.LogInformation("Torvia push: {Count} titles removed at once, no notification sent", gone.Count);
+            return;
+        }
+
+        var fb = Firebase();
+        if (fb is null || Plugin.Instance?.Configuration.PushRemovals != true)
+        {
+            return;
+        }
+
+        var real = gone.Where(r => !StillThere(r)).ToList();
+        if (real.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var group in _store.All().GroupBy(d => d.UserId, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!Guid.TryParse(group.Key, out var userId) || _users.GetUserById(userId) is not { } user
+                || user.HasPermission(PermissionKind.IsDisabled))
+            {
+                continue;
+            }
+
+            var mine = real.Where(r => r.Users.Contains(group.Key)).Take(MaxItems).Select(r =>
+            {
+                var d = new Dictionary<string, object> { ["id"] = r.Id.ToString("N"), ["type"] = r.Type, ["name"] = Cut(r.Name, 120) };
+                if (r.Year is { } y)
+                {
+                    d["year"] = y;
+                }
+
+                return d;
+            }).ToList();
+            if (mine.Count == 0)
+            {
+                continue;
+            }
+
+            var data = Message(group.Key.ToLowerInvariant(), mine, "removed_titles");
+            var (ok, failed) = await SendAsync(fb.Value.ProjectId, group.ToList(), data, CancellationToken.None).ConfigureAwait(false);
+            _log.LogInformation("Torvia push: {User}: {Count} removed, {Ok} device(s) ok, {Failed} failed", user.Username, mine.Count, ok, failed);
+        }
+    }
+
     /// <summary>The data message: type, user and a JSON list of items, under 3.5 KB.</summary>
     private static Dictionary<string, string> Message(string userId, List<BaseItem> items)
+        => Message(userId, items.Select(Describe).ToList(), "new_titles");
+
+    private static Dictionary<string, string> Message(string userId, List<Dictionary<string, object>> list, string type)
     {
-        var list = items.Select(Describe).ToList();
         while (true)
         {
             var data = new Dictionary<string, string>
             {
-                ["type"] = "new_titles",
+                ["type"] = type,
                 ["userId"] = userId,
                 ["items"] = JsonSerializer.Serialize(list),
             };

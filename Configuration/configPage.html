@@ -451,6 +451,10 @@
                                 <label><input is="emby-checkbox" type="checkbox" id="PushEnabled" /><span>Send push notifications to PHOENIXA</span></label>
                                 <div class="fieldDescription checkboxFieldDescription">Several titles added together arrive as one notification. A full library scan (more than 50 new items at once) sends nothing.</div>
                             </div>
+                            <div class="checkboxContainer checkboxContainer-withDescription">
+                                <label><input is="emby-checkbox" type="checkbox" id="PushRemovals" /><span>Also when a movie or series is removed</span></label>
+                                <div class="fieldDescription checkboxFieldDescription">“Removed a movie / Removed a show: Name (Year) removed”. Not sent when Torvia only renames or moves a title, or another copy is still there.</div>
+                            </div>
                             <div class="tv-split" style="margin:0;max-width:420px"><span>Registered devices</span><b id="pnDevices">—</b><span>Yours</span><b id="pnMine">—</b></div>
                         </div>
 
@@ -942,7 +946,7 @@
             $('#pnSaReplace').addEventListener('click', function () { show('pnSa', false); $('#pnSa').focus(); });
 
             page.addEventListener('pageshow', function () {
-                ApiClient.getPluginConfiguration(pluginId).then(function (c) { $('#PushEnabled').checked = !!c.PushEnabled; });
+                ApiClient.getPluginConfiguration(pluginId).then(function (c) { $('#PushEnabled').checked = !!c.PushEnabled; $('#PushRemovals').checked = c.PushRemovals !== false; });
                 loadStatus();
             });
 
@@ -957,6 +961,7 @@
                 steps.then(function () {
                     return ApiClient.getPluginConfiguration(pluginId).then(function (c) {
                         c.PushEnabled = $('#PushEnabled').checked;
+                        c.PushRemovals = $('#PushRemovals').checked;
                         return ApiClient.updatePluginConfiguration(pluginId, c);
                     });
                 }).then(function (r) {

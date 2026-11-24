@@ -259,6 +259,7 @@ app with its download links.
 | Setting | What it does | Default |
 |---|---|---|
 | Send push notifications to PHOENIXA | Switches notifications to phones on or off. | off |
+| Also when a movie or series is removed | Also notify "Removed a movie / Removed a show". | on |
 | google-services.json | The Firebase settings of the PHOENIXA app (from your own Firebase project). Not secret. | — |
 | Service account key | Lets this server send through Firebase. Kept secret on the server; after saving only its email is shown, with a **Replace** button. | — |
 | Send test to my devices | Sends a test notification to your own phones. | - |
@@ -310,6 +311,16 @@ Once push is on and set up, it's automatic; there's nothing to press.
 - **Phones** (and Android TVs with Google Play services) get a real notification.
 - **Fire TV** has no Google Play services, so it can't get push notifications. New titles show up
   in PHOENIXA's normal *Recently added* lists there, and your own messages still reach it (see below).
+
+### When a title is removed
+
+With **Also when a movie or series is removed** on (the default), users also get a short
+notification when a movie or series disappears from Jellyfin, for example *Removed a movie —
+Leo (2023) removed*. Several removals together arrive as one notification, and only users who
+could see the title get it.
+
+It is **not** sent when Torvia only renames or moves a title's file, when another copy of the same
+title is still in Jellyfin, for single episodes, or for a big clean-up (more than 50 at once).
 
 ### Your own messages
 
@@ -395,10 +406,11 @@ All calls need a signed-in Jellyfin user.
 | `GET /TorviaPush/Messages` | The owner's messages for the caller from the last 7 days, newest first, at most 20: `{messages: [{id, title, body, sentAt}]}` (`sentAt` in UTC, e.g. `2026-11-22T11:00:00Z`). |
 
 Push messages are **data-only** (the app builds the notification): `type` (`new_titles`,
-`message` or `test`) and `userId` (32 hex letters). `message` adds `title` and `body`.
+`removed_titles`, `message` or `test`) and `userId` (32 hex letters). `message` adds `title` and `body`.
 `new_titles` adds `items`, a JSON list (as a string) of up to 10 titles with `id`, `type`
 (`Movie`, `Series`, `Episode`), `name`, `year`, and for episodes `seriesId`, `seriesName`,
-`season`, `episode`. Android priority is high, kept for 24 hours if the phone is offline.
+`season`, `episode`. `removed_titles` adds `items` too, each with `id`, `type` (`Movie` or
+`Series`), `name` and `year`. Android priority is high, kept for 24 hours if the phone is offline.
 
 ---
 

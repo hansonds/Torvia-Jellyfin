@@ -96,6 +96,9 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Gets or sets a value indicating whether push notifications are sent to PHOENIXA.</summary>
     public bool PushEnabled { get; set; }
 
+    /// <summary>Gets or sets a value indicating whether users also hear when a movie or series is removed.</summary>
+    public bool PushRemovals { get; set; } = true;
+
     /// <summary>Gets or sets the Firebase project id (from google-services.json).</summary>
     public string PushProjectId { get; set; } = string.Empty;
 
